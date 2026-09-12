@@ -79,10 +79,16 @@ exports.handler = async (event) => {
       };
     }
 
+    // Si estamos usando credenciales de PRUEBA (empiezan con "TEST-"), hay que
+    // redirigir al link de sandbox, no al de producción, o Mercado Pago
+    // rechaza cualquier pago de prueba.
+    const isTestCredential = MP_ACCESS_TOKEN && MP_ACCESS_TOKEN.startsWith("TEST-");
+    const checkoutUrl = isTestCredential ? (data.sandbox_init_point || data.init_point) : data.init_point;
+
     return {
       statusCode: 200,
       body: JSON.stringify({
-        init_point: data.init_point, // link al que hay que mandar al cliente
+        init_point: checkoutUrl, // link al que hay que mandar al cliente
         preference_id: data.id,
       }),
     };
