@@ -1,14 +1,25 @@
 // netlify/functions/create-preference.js
 //
-// Recibe el carrito armado por el cliente en la carta digital y crea
-// una "preferencia de pago" en Mercado Pago. Devuelve el link de pago
-// (init_point) al que hay que redirigir al cliente.
+// Recibe lo que el cliente ARMÓ en la carta (qué hamburguesa, con qué pan,
+// papas, salsa, aderezos y bebida) y crea el pago en Mercado Pago.
+// Devuelve el link de pago (init_point) al que hay que mandar al cliente.
 //
-// El ACCESS TOKEN de Mercado Pago NUNCA va en el código: se lee desde
-// una variable de entorno configurada en Netlify (ver instrucciones).
+// IMPORTANTE: el celular NO manda precios. Los precios y el total se calculan
+// acá, con el catálogo de menu.js, para que nadie pueda alterarlos.
+//
+// El ACCESS TOKEN de Mercado Pago NUNCA va en el código: se lee de una
+// variable de entorno configurada en Netlify (MP_ACCESS_TOKEN).
+
+const { CATALOG, cleanText, normalizeLines, compactCart } = require("./menu");
 
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
-const SITE_URL = process.env.SITE_URL || "https://soypapina.netlify.app";
+const SITE_URL = process.env.SITE_URL || "https://soypapina.com.ar";
+
+const json = (statusCode, obj) => ({
+  statusCode,
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(obj),
+});
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -16,36 +27,53 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = JSON.parse(event.body);
-    // body esperado (lo arma el frontend):
-    // {
-    //   items: [{ name, quantity, unit_price, notes }],
-    //   customer: { name, tel, notes_general },
-    //   total: 34500
-    // }
-
-    const { items, customer, total } = body;
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Carrito vacío" }) };
+    if (!MP_ACCESS_TOKEN) {
+      console.error("Falta la variable MP_ACCESS_TOKEN en Netlify");
+      return json(500, { error: "Pagos no configurados" });
     }
 
-    // Armamos los items en el formato que pide Mercado Pago
-    const mpItems = items.map((it) => ({
-      title: it.name,
-      quantity: it.quantity,
-      unit_price: Number(it.unit_price),
+    let body;
+    try {
+      body = JSON.parse(event.body || "{}");
+    } catch (e) {
+      return json(400, { error: "Pedido inválido" });
+    }
+
+    // body esperado (lo arma la carta):
+    // {
+    //   customer: { name, notes_general },
+    //   pickup: true,                       // el cliente confirmó que retira en el local
+    //   lines: [{ key, bread, fries, sauce, extras: [], drink, note }]
+    // }
+    const customer = body.customer || {};
+    const name = cleanText(customer.name, 60);
+    if (!name) return json(400, { error: "Falta el nombre" });
+    if (body.pickup !== true) {
+      return json(400, { error: "Falta confirmar el retiro en el local" });
+    }
+
+    // Validamos el pedido y calculamos el total con el catálogo del servidor
+    const norm = normalizeLines(body.lines);
+    if (!norm.ok) return json(400, { error: norm.error });
+
+    // Mercado Pago: una fila por tipo de hamburguesa (con su cantidad).
+    // Las opciones (pan, papas, etc.) van a $0 y solo viajan a Thinkion.
+    const counts = {};
+    for (const l of norm.lines) counts[l.key] = (counts[l.key] || 0) + 1;
+    const mpItems = Object.keys(counts).map((key) => ({
+      id: key,
+      title: CATALOG.products[key].name,
+      quantity: counts[key],
+      unit_price: CATALOG.products[key].price,
       currency_id: "ARS",
     }));
 
-    // Guardamos en metadata TODO lo que vamos a necesitar después,
-    // cuando llegue la confirmación de pago (webhook), para armar
-    // el pedido en Thinkion sin depender de ninguna base de datos.
+    // Guardamos el pedido (compacto) en metadata para armarlo en Thinkion
+    // cuando llegue la confirmación de pago (webhook).
     const metadata = {
-      customer_name: customer?.name || "Cliente",
-      customer_tel: customer?.tel || "",
-      notes_general: customer?.notes_general || "",
-      cart: items, // guardamos el carrito completo (incluye id_product de cada ítem)
+      customer_name: name,
+      notes_general: cleanText(customer.notes_general, 300),
+      cart: compactCart(norm.lines),
     };
 
     const preference = {
@@ -73,27 +101,21 @@ exports.handler = async (event) => {
 
     if (!resp.ok) {
       console.error("Error creando preferencia MP:", data);
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: "No se pudo crear el pago", detail: data }),
-      };
+      return json(500, { error: "No se pudo crear el pago" });
     }
 
-    // Si estamos usando credenciales de PRUEBA (empiezan con "TEST-"), hay que
-    // redirigir al link de sandbox, no al de producción, o Mercado Pago
-    // rechaza cualquier pago de prueba.
-    const isTestCredential = MP_ACCESS_TOKEN && MP_ACCESS_TOKEN.startsWith("TEST-");
-    const checkoutUrl = isTestCredential ? (data.sandbox_init_point || data.init_point) : data.init_point;
+    // Con credenciales de PRUEBA (empiezan con "TEST-") hay que ir al link de
+    // sandbox; con las de producción, al link normal.
+    const isTestCredential = MP_ACCESS_TOKEN.startsWith("TEST-");
+    const checkoutUrl = isTestCredential ? data.sandbox_init_point || data.init_point : data.init_point;
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        init_point: checkoutUrl, // link al que hay que mandar al cliente
-        preference_id: data.id,
-      }),
-    };
+    return json(200, {
+      init_point: checkoutUrl,
+      preference_id: data.id,
+      total: norm.total,
+    });
   } catch (err) {
     console.error("Error inesperado:", err);
-    return { statusCode: 500, body: JSON.stringify({ error: "Error interno" }) };
+    return json(500, { error: "Error interno" });
   }
 };
