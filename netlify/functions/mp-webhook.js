@@ -2,8 +2,8 @@
 //
 // Mercado Pago llama a esta función automáticamente cada vez que cambia el
 // estado de un pago. Si el pago está aprobado, arma el pedido en el formato
-// que pide Thinkion (hamburguesa + opciones como ítems hijos) y lo manda a la
-// API de ventas (/order/set/).
+// que pide Thinkion (hamburguesa + opciones como ítems hijos, y el descuento
+// si el cliente usó un código) y lo manda a la API de ventas (/order/set/).
 //
 // CÓMO SE PROTEGE EL PEDIDO:
 //  - Solo se da por cargado si Thinkion lo CONFIRMA (el id del pedido tiene que
@@ -12,49 +12,14 @@
 //    Pago vuelve a avisar solo, varias veces. Thinkion evita duplicados porque
 //    el id del pedido es siempre el id del pago.
 
-const { expandCart, buildThinkionItems, cleanText } = require("./menu");
-
-const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
-const THINKION_NODE = process.env.THINKION_NODE; // "1"
-const THINKION_CLIENT_CODE = process.env.THINKION_CLIENT_CODE; // "papi"
-const THINKION_TOKEN = process.env.THINKION_TOKEN; // token del endpoint de ventas
-
-const THINKION_URL = `https://s${THINKION_NODE}.${THINKION_CLIENT_CODE}.thinkerp.cc/order/set/`;
+const { CATALOG, expandCart, buildThinkionOrder, sendToThinkion } = require("./menu");
 
 // id_payment de "Mercado Pago" dentro de Thinkion (tabla payment_method, fila id=15)
 const ID_PAYMENT_MERCADO_PAGO = 15;
 
-const THINKION_TIMEOUT_MS = 8000;
-
 const ok = (msg) => ({ statusCode: 200, body: typeof msg === "string" ? msg : JSON.stringify(msg) });
 // Con 500 Mercado Pago reintenta el aviso más tarde.
 const retry = (msg) => ({ statusCode: 500, body: typeof msg === "string" ? msg : JSON.stringify(msg) });
-
-async function sendToThinkion(order) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), THINKION_TIMEOUT_MS);
-  try {
-    const resp = await fetch(THINKION_URL, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-Server-Token": THINKION_TOKEN,
-      },
-      body: JSON.stringify([order]), // Thinkion espera un ARRAY de pedidos
-      signal: controller.signal,
-    });
-    let data = null;
-    try {
-      data = await resp.json();
-    } catch (e) {
-      data = null;
-    }
-    return { httpOk: resp.ok, status: resp.status, data };
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -62,6 +27,7 @@ exports.handler = async (event) => {
   }
 
   try {
+    const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
     const query = event.queryStringParameters || {};
     let notification = {};
     try {
@@ -110,55 +76,40 @@ exports.handler = async (event) => {
       return ok("pedido no válido, ver log");
     }
 
-    const total = payment.transaction_amount;
-    if (Number(total) !== Number(norm.total)) {
-      console.warn(`El total pagado ($${total}) no coincide con el del catálogo ($${norm.total}). id_pago ${payment.id}`);
+    // 4. Importes. Lo cobrado es lo que dice Mercado Pago; el descuento es la diferencia
+    //    contra el total del catálogo (solo si el cliente usó un código válido).
+    const paid = Number(payment.transaction_amount);
+    let discount = null;
+    const dKey = metadata.discount_key;
+    if (dKey && Object.prototype.hasOwnProperty.call(CATALOG.discounts, dKey)) {
+      const d = CATALOG.discounts[dKey];
+      const amount = norm.total - paid;
+      if (amount > 0) {
+        discount = { id: d.id, name: d.name, amount, code: String(metadata.coupon || "") };
+      } else {
+        console.warn(`Pago con código pero sin diferencia de importe (id_pago ${payment.id}): total ${norm.total}, cobrado ${paid}`);
+      }
+      if (metadata.expected_pay != null && Number(metadata.expected_pay) !== paid) {
+        console.warn(`Lo cobrado ($${paid}) no coincide con lo esperado ($${metadata.expected_pay}). id_pago ${payment.id}`);
+      }
+    } else if (paid !== norm.total) {
+      console.warn(`El total pagado ($${paid}) no coincide con el del catálogo ($${norm.total}). id_pago ${payment.id}`);
     }
 
-    // 4. Armamos el pedido completo para Thinkion
+    // 5. Armamos el pedido completo para Thinkion
     const orderId = Number(payment.id); // id del pago de MP: único y trazable
-    const generalNotes = cleanText(metadata.notes_general, 400);
-    const order = {
-      details: {
-        id_order: orderId,
-        sale_channel: "digital",
-        notes: cleanText(`RETIRA EN EL LOCAL${generalNotes ? " - " + generalNotes : ""}`, 500),
-        total: {
-          debt: total,
-          discount: 0,
-        },
-      },
-      customer: {
-        id_customer: 1, // sin sistema de clientes propio todavía, usamos un ID fijo
-        name: metadata.customer_name || "Cliente",
-        surname: "",
-        email: (payment.payer && payment.payer.email) || "sin-email@soypapina.com",
-        tel: metadata.customer_tel || null,
-        doc: null,
-        company: null,
-        address: {
-          input: "Doña Papina - Retiro en el local",
-          route: "-",
-          number: 0,
-          department: null,
-          locality: "-",
-          city: "-",
-          country: "Argentina",
-          coords: { lat: 0, lng: 0 },
-        },
-      },
-      items: buildThinkionItems(norm.lines),
-      discounts: [],
-      payments: [
-        {
-          id_payment: ID_PAYMENT_MERCADO_PAGO,
-          name: "Mercado Pago",
-          total: total,
-        },
-      ],
-    };
+    const order = buildThinkionOrder({
+      orderId,
+      name: metadata.customer_name,
+      email: payment.payer && payment.payer.email,
+      generalNotes: metadata.notes_general,
+      lines: norm.lines,
+      debt: paid,
+      discount,
+      payment: { id_payment: ID_PAYMENT_MERCADO_PAGO, name: "Mercado Pago", total: paid },
+    });
 
-    // 5. Mandamos el pedido a Thinkion y exigimos su confirmación
+    // 6. Mandamos el pedido a Thinkion y exigimos su confirmación
     let result;
     try {
       result = await sendToThinkion(order);
@@ -167,13 +118,10 @@ exports.handler = async (event) => {
       return retry("Thinkion no respondió, se reintenta");
     }
 
-    const data = result.data || {};
-    const confirmed = Array.isArray(data.confirm) && data.confirm.map(Number).indexOf(orderId) !== -1;
-
-    if (!result.httpOk || data.result !== true || !confirmed) {
+    if (!result.confirmed) {
       console.error(
         `Thinkion NO confirmó el pedido (id_pago ${payment.id}, http ${result.status}):`,
-        JSON.stringify(data)
+        JSON.stringify(result.data)
       );
       return retry("Thinkion no confirmó el pedido, se reintenta");
     }

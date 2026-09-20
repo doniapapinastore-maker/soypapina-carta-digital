@@ -66,6 +66,27 @@ const CATALOG = {
   ],
 };
 
+// ─── Descuentos y códigos ─────────────────────────────────────────────────
+// Descuentos: los mismos 3 que existen en Thinkion (id = id_discount en Thinkion).
+// percent = % que se descuenta del total del pedido (tiene que coincidir con Thinkion).
+CATALOG.discounts = {
+  d10:    { id: 1, name: "Descuento 10% off", percent: 10 },
+  duenos: { id: 2, name: "Consumo dueños",    percent: 99 },
+  casa:   { id: 3, name: "Invita la casa",    percent: 100 },
+};
+
+// Códigos que se le pueden dar a un cliente. Cada código apunta a un descuento.
+//   expires (opcional): último día válido, formato "2026-12-31" (hora de Argentina).
+// Para agregar un código: una línea nueva. Para anularlo: borrá la línea.
+// IMPORTANTE: los códigos que dan 100% ("casa") hacen pedidos GRATIS. Usá códigos
+// largos, difíciles de adivinar, y con fecha de vencimiento.
+// >>> Los códigos PRUEBA... son solo para probar: BORRALOS antes de abrir la carta al público.
+CATALOG.coupons = {
+  PRUEBA10:  { discount: "d10" },
+  PRUEBA99:  { discount: "duenos" },
+  PRUEBA100: { discount: "casa" },
+};
+
 const MAX_LINES = 20; // hamburguesas por pedido
 
 const byKey = (list) => Object.fromEntries(list.map((o) => [o.key, o]));
@@ -204,6 +225,118 @@ function buildThinkionItems(lines) {
   return items;
 }
 
+// ─── Códigos de descuento ──────────────────────────────────────────────────
+// Devuelve { ok:true, code, key, id, name, percent } o { ok:false, error }.
+// opts.skipExpiry: lo usa el webhook (un pedido ya pagado no se rechaza porque el código venció).
+function resolveCoupon(raw, opts) {
+  const skipExpiry = !!(opts && opts.skipExpiry);
+  const code = String(raw == null ? "" : raw).toUpperCase().replace(/\s+/g, "");
+  const def = code && Object.prototype.hasOwnProperty.call(CATALOG.coupons, code) ? CATALOG.coupons[code] : null;
+  const generic = "Ese código no es válido o ya venció.";
+  if (!def) return fail(generic);
+  if (def.expires && !skipExpiry) {
+    const end = new Date(def.expires + "T23:59:59-03:00");
+    if (isNaN(end.getTime()) || Date.now() > end.getTime()) return fail(generic);
+  }
+  const d = CATALOG.discounts[def.discount];
+  if (!d) return fail(generic);
+  return { ok: true, code, key: def.discount, id: d.id, name: d.name, percent: d.percent };
+}
+
+// Descuento en pesos enteros. La carta usa exactamente la misma cuenta.
+function applyDiscount(subtotal, percent) {
+  const p = Math.max(0, Math.min(100, Number(percent) || 0));
+  const discount = Math.round((subtotal * p) / 100);
+  return { subtotal, discount, pay: subtotal - discount };
+}
+
+// ─── Thinkion ──────────────────────────────────────────────────────────────
+const THINKION_TIMEOUT_MS = 8000;
+
+function thinkionUrl() {
+  return `https://s${process.env.THINKION_NODE}.${process.env.THINKION_CLIENT_CODE}.thinkerp.cc/order/set/`;
+}
+
+// Arma el pedido completo en el formato de Thinkion.
+//   discount: { id, name, amount, code } o null      payment: { id_payment, name, total } o null
+function buildThinkionOrder(o) {
+  const disc = o.discount && o.discount.amount > 0 ? o.discount : null;
+  const notes = ["RETIRA EN EL LOCAL"];
+  if (disc) notes.push(`CODIGO ${disc.code}`);
+  const general = cleanText(o.generalNotes, 300);
+  if (general) notes.push(general);
+  return {
+    details: {
+      id_order: o.orderId,
+      sale_channel: "digital",
+      notes: cleanText(notes.join(" - "), 500),
+      total: { debt: o.debt, discount: disc ? disc.amount : 0 },
+    },
+    customer: {
+      id_customer: 1, // sin sistema de clientes propio todavía, usamos un ID fijo
+      name: o.name || "Cliente",
+      surname: "",
+      email: o.email || "sin-email@soypapina.com",
+      tel: null,
+      doc: null,
+      company: null,
+      address: {
+        input: "Doña Papina - Retiro en el local",
+        route: "-",
+        number: 0,
+        department: null,
+        locality: "-",
+        city: "-",
+        country: "Argentina",
+        coords: { lat: 0, lng: 0 },
+      },
+    },
+    items: buildThinkionItems(o.lines),
+    discounts: disc ? [{ id_discount: disc.id, name: disc.name, total: disc.amount }] : [],
+    payments: o.payment ? [o.payment] : [],
+  };
+}
+
+// Manda el pedido y devuelve { confirmed, httpOk, status, data }.
+// "confirmed" es true SOLO si Thinkion devuelve el id del pedido en la lista "confirm".
+async function sendToThinkion(order) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), THINKION_TIMEOUT_MS);
+  try {
+    const resp = await fetch(thinkionUrl(), {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Server-Token": process.env.THINKION_TOKEN,
+      },
+      body: JSON.stringify([order]), // Thinkion espera un ARRAY de pedidos
+      signal: controller.signal,
+    });
+    let data = null;
+    try {
+      data = await resp.json();
+    } catch (e) {
+      data = null;
+    }
+    const d = data || {};
+    const confirmed =
+      resp.ok &&
+      d.result === true &&
+      Array.isArray(d.confirm) &&
+      d.confirm.map(Number).indexOf(Number(order.details.id_order)) !== -1;
+    return { confirmed, httpOk: resp.ok, status: resp.status, data };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Id para pedidos que NO pasan por Mercado Pago (100% de descuento).
+// Empieza con 99 para que nunca se confunda con el id de un pago.
+function freeOrderId() {
+  return Number("99" + String(Date.now()).slice(-10));
+}
+
 // Endpoint público: la carta lo llama para conocer precios y opciones.
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") {
@@ -241,3 +374,8 @@ exports.normalizeLines = normalizeLines;
 exports.compactCart = compactCart;
 exports.expandCart = expandCart;
 exports.buildThinkionItems = buildThinkionItems;
+exports.resolveCoupon = resolveCoupon;
+exports.applyDiscount = applyDiscount;
+exports.buildThinkionOrder = buildThinkionOrder;
+exports.sendToThinkion = sendToThinkion;
+exports.freeOrderId = freeOrderId;
