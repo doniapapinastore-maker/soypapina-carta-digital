@@ -434,7 +434,8 @@ function thinkionUrl() {
 
 function buildThinkionOrder(o) {
   const disc = o.discount && o.discount.amount > 0 ? o.discount : null;
-  const notes = ["RETIRA EN EL LOCAL"];
+  // El nombre va primero en las notas para que se vea en el KDS (el de Thinkion y el propio)
+  const notes = [`CLIENTE: ${cleanText(o.name || "Cliente", 60).toUpperCase()}`, "RETIRA EN EL LOCAL"];
   if (disc) notes.push(`CODIGO ${disc.code}`);
   const general = cleanText(o.generalNotes, 300);
   if (general) notes.push(general);
