@@ -178,6 +178,9 @@ input, textarea { font-family: var(--f-body); }
 .tile.check[aria-checked="true"] .mark { background: var(--cream); }
 .tile.check[aria-checked="true"] .mark::after { transform: rotate(-45deg) scale(1); }
 .tile.note[aria-checked="true"] { background: var(--red); border-color: var(--red); }
+.tile.nostock { opacity: 0.5; border-style: dashed; cursor: not-allowed; background: var(--paper); color: var(--ink); }
+.tile.nostock .mark { opacity: 0.4; }
+.tile .ns { display: block; font-size: 11px; font-weight: 700; color: var(--red); margin-top: 2px; }
 .tile.note[aria-checked="true"] .mark { background: var(--red); }
 .tile.note.check[aria-checked="true"] .mark { background: var(--cream); }
 .tile.note.check[aria-checked="true"] .mark::after { border-color: var(--red); }
@@ -608,13 +611,14 @@ input, textarea { font-family: var(--f-body); }
     var main = [];
     if (p.bread) main.push(label(o.bread, s.bread));
     if (p.fries) main.push(label(o.fries, s.fries));
-    main.push(label(o.sauce, s.sauce));
+    if (s.sauce) main.push(label(o.sauce, s.sauce));
+    main = main.filter(Boolean);
     var extras = (s.extras || []).map(function (k) { return label(o.extras, k); });
     return { main: main.join(' · '), extras: extras.join(', '), drink: label(o.drinks, s.drink), note: noteOf(s) };
   }
   function describeText(line) {
     var d = describe(line);
-    var parts = [d.main];
+    var parts = d.main ? [d.main] : [];
     if (d.extras) parts.push('Aderezos: ' + d.extras);
     return { detail: parts.join(' · '), drink: d.drink, note: d.note };
   }
@@ -665,7 +669,7 @@ input, textarea { font-family: var(--f-body); }
       var old = card.querySelector('.incart');
       if (old) old.remove();
       if (!info) { priceEl.textContent = '…'; btn.disabled = true; return; }
-      priceEl.textContent = money(info.price);
+      priceEl.textContent = (!info.available && !info.price) ? '' : money(info.price);
       card.classList.toggle('off', !info.available);
       card.classList.toggle('has', count > 0);
       btn.disabled = !info.available;
@@ -677,16 +681,16 @@ input, textarea { font-family: var(--f-body); }
   // ───── ventana para armar ─────
   function defaultSel(key) {
     var o = state.menu.options, p = state.menu.products[key];
-    function def(list) { for (var i = 0; i < list.length; i++) if (list[i].default) return list[i].key; return null; }
-    return { bread: null, fries: p.fries ? def(o.fries) : null, sauce: def(o.sauce), extras: [], drink: null, chips: [], text: '' };
+    function def(list) { for (var i = 0; i < list.length; i++) if (list[i].default && list[i].available !== false) return list[i].key; return null; }
+    return { bread: null, fries: p.fries ? def(o.fries) : null, sauce: p.sauce !== false ? def(o.sauce) : null, extras: [], drink: null, chips: [], text: '' };
   }
   function sectionsFor(key) {
     var o = state.menu.options, p = state.menu.products[key], list = [];
     if (p.bread) list.push({ id: 'bread', title: 'Elegí tu pan', type: 'one', req: true, opts: o.bread, cols: 'two' });
     if (p.fries) list.push({ id: 'fries', title: 'Elegí tus papas', type: 'one', req: true, opts: o.fries });
-    list.push({ id: 'sauce', title: 'Elegí tu salsa', type: 'one', req: true, opts: o.sauce });
-    list.push({ id: 'extras', title: 'Sumá aderezos', hint: 'podés elegir más de uno', type: 'many', req: false, opts: o.extras });
-    list.push({ id: 'drink', title: 'Elegí tu bebida', hint: 'incluida en el precio', type: 'one', req: true, opts: o.drinks, cols: 'two' });
+    if (p.sauce !== false) list.push({ id: 'sauce', title: 'Elegí tu salsa', type: 'one', req: true, opts: o.sauce });
+    if (p.extras !== false) list.push({ id: 'extras', title: 'Sumá aderezos', hint: 'podés elegir más de uno', type: 'many', req: false, opts: o.extras });
+    if (p.drink !== false) list.push({ id: 'drink', title: 'Elegí tu bebida', hint: 'incluida en el precio', type: 'one', req: true, opts: o.drinks, cols: 'two' });
     return list;
   }
   function openSheet(key, uid) {
@@ -725,8 +729,10 @@ input, textarea { font-family: var(--f-body); }
       ]);
       var tiles = h('div', { class: 'tiles' + (s.cols === 'two' ? ' two' : ''), role: s.type === 'one' ? 'radiogroup' : 'group', 'aria-labelledby': 'h-' + s.id },
         s.opts.map(function (op) {
-          return h('button', { type: 'button', class: 'tile' + (s.type === 'many' ? ' check' : ''), role: s.type === 'one' ? 'radio' : 'checkbox',
-            'aria-checked': 'false', 'data-sec': s.id, 'data-val': op.key }, [h('span', { class: 'mark' }), h('span', { text: op.short })]);
+          var ns = op.available === false;
+          return h('button', { type: 'button', class: 'tile' + (s.type === 'many' ? ' check' : '') + (ns ? ' nostock' : ''), role: s.type === 'one' ? 'radio' : 'checkbox',
+            'aria-checked': 'false', 'aria-disabled': ns ? 'true' : null, 'data-sec': s.id, 'data-val': op.key },
+            [h('span', { class: 'mark' }), h('span', {}, [op.short, ns ? h('span', { class: 'ns', text: 'Sin stock' }) : null])]);
         })
       );
       box.appendChild(h('section', { class: 'opt', 'data-opt': s.id }, [head, tiles]));
@@ -821,8 +827,8 @@ input, textarea { font-family: var(--f-body); }
         var d = describe(l);
         ul.appendChild(h('li', { class: 'line' }, [
           h('div', { class: 'line-top' }, [h('span', { class: 'line-name', text: ALL[l.key].name }), h('span', { class: 'line-price', text: money(price(l.key)) })]),
-          h('div', { class: 'line-opts', text: d.main + (d.extras ? ' · + ' + d.extras : '') }),
-          h('div', { class: 'line-drink', text: '🥤 ' + d.drink + ' (incluida)' }),
+          h('div', { class: 'line-opts', text: [d.main, d.extras ? '+ ' + d.extras : ''].filter(Boolean).join(' · ') }),
+          d.drink ? h('div', { class: 'line-drink', text: '🥤 ' + d.drink + ' (incluida)' }) : null,
           d.note ? h('div', { class: 'line-note', text: '“' + d.note + '”' }) : null,
           h('div', { class: 'line-act' }, [
             h('button', { type: 'button', 'data-act': 'edit', 'data-uid': l.uid, 'aria-label': 'Editar ' + ALL[l.key].name, text: 'Editar' }),
@@ -1003,8 +1009,8 @@ input, textarea { font-family: var(--f-body); }
     items.forEach(function (i) {
       box.appendChild(h('div', { class: 'rc-item' }, [
         h('b', { text: '1 × ' + i.name }),
-        h('div', { text: i.detail }),
-        h('div', { text: 'Bebida: ' + i.drink }),
+        i.detail ? h('div', { text: i.detail }) : null,
+        i.drink ? h('div', { text: 'Bebida: ' + i.drink }) : null,
         i.note ? h('div', { text: 'Obs: ' + i.note }) : null
       ]));
     });
@@ -1015,8 +1021,8 @@ input, textarea { font-family: var(--f-body); }
     var lines = ['🧾 COMPROBANTE DE PEDIDO — Doña Papina', '👤 ' + name, '🕐 ' + dateStr, '📍 Retira en el local', ''];
     items.forEach(function (i) {
       lines.push('1 × ' + i.name);
-      lines.push('   ' + i.detail);
-      lines.push('   Bebida: ' + i.drink);
+      if (i.detail) lines.push('   ' + i.detail);
+      if (i.drink) lines.push('   Bebida: ' + i.drink);
       if (i.note) lines.push('   Obs: ' + i.note);
     });
     if (notes) lines.push('Obs. generales: ' + notes);
@@ -1076,6 +1082,7 @@ input, textarea { font-family: var(--f-body); }
       var tile = t.closest('#sheet-scroll .tile');
       if (tile && state.sheet) {
         var sel = state.sheet.sel;
+        if (tile.getAttribute('aria-disabled') === 'true') { toast('Esa opción está sin stock por ahora'); return; }
         if (tile.hasAttribute('data-chip')) {
           var c = tile.getAttribute('data-chip'), i = sel.chips.indexOf(c);
           if (i === -1) sel.chips.push(c); else sel.chips.splice(i, 1);
