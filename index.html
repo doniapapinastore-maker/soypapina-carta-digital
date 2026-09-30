@@ -178,6 +178,7 @@ input, textarea { font-family: var(--f-body); }
 .tile.check[aria-checked="true"] .mark { background: var(--cream); }
 .tile.check[aria-checked="true"] .mark::after { transform: rotate(-45deg) scale(1); }
 .tile.note[aria-checked="true"] { background: var(--red); border-color: var(--red); }
+.opt-foot { margin: 6px 2px 0; font-size: 12px; font-weight: 600; font-style: italic; color: var(--brown); line-height: 1.3; }
 .tile.nostock { opacity: 0.5; border-style: dashed; cursor: not-allowed; background: var(--paper); color: var(--ink); }
 .tile.nostock .mark { opacity: 0.4; }
 .tile .ns { display: block; font-size: 11px; font-weight: 700; color: var(--red); margin-top: 2px; }
@@ -395,32 +396,45 @@ input, textarea { font-family: var(--f-body); }
     <main class="main">
 
       <div class="tabs" role="tablist" aria-label="Categorías">
-        <button class="tab" type="button" role="tab" data-tab="hamburguesas" aria-selected="true">HAMBURGUESAS</button>
+        <button class="tab" type="button" role="tab" data-tab="combos" aria-selected="true">COMBOS HAMBURGUESAS</button>
+        <button class="tab" type="button" role="tab" data-tab="solas" aria-selected="false">HAMBURGUESAS SOLAS</button>
         <button class="tab" type="button" role="tab" data-tab="pizzas" aria-selected="false">PIZZAS</button>
         <button class="tab" type="button" role="tab" data-tab="sandwiches" aria-selected="false">SÁNDWICHES Y MILANESAS</button>
         <button class="tab" type="button" role="tab" data-tab="empanadas" aria-selected="false">EMPANADAS Y TARTAS</button>
         <button class="tab" type="button" role="tab" data-tab="papas" aria-selected="false">PAPAS Y GUARNICIONES</button>
         <button class="tab" type="button" role="tab" data-tab="vacio" aria-selected="false">PLATOS AL VACÍO</button>
         <button class="tab" type="button" role="tab" data-tab="bebidas" aria-selected="false">BEBIDAS</button>
-        <button class="tab" type="button" role="tab" data-tab="combos" aria-selected="false">COMBOS</button>
       </div>
 
-      <div class="panel" data-panel="hamburguesas" role="tabpanel">
-        <div class="menu-error" id="menu-error" hidden>
-          <span>No pudimos cargar los precios. Revisá tu conexión e intentá de nuevo.</span>
-          <button type="button" id="menu-retry">Reintentar</button>
-        </div>
+      <div class="menu-error" id="menu-error" hidden>
+        <span>No pudimos cargar los precios. Revisá tu conexión e intentá de nuevo.</span>
+        <button type="button" id="menu-retry">Reintentar</button>
+      </div>
 
+      <div class="panel" data-panel="combos" role="tabpanel">
         <div class="incl">
-          <b>TODAS VIENEN CON BEBIDA Y PAPAS</b>
-          <span>las elegís cuando armás tu hamburguesa (los Papinuggets no llevan papas)</span>
+          <b>TODOS LOS COMBOS VIENEN CON PAPAS Y BEBIDA</b>
+          <span>los elegís cuando armás tu combo</span>
         </div>
 
-        <div class="sec"><b>LAS HAMBURGUESAS</b><i></i></div>
-        <div class="grid" id="grid-adult"></div>
+        <div class="sec"><b>COMBOS HAMBURGUESAS</b><i></i></div>
+        <div class="grid" id="grid-combos"></div>
 
         <div class="sec"><b class="brown">LOS CHIQUITOS</b><i></i></div>
-        <div class="grid" id="grid-kids"></div>
+        <div class="grid" id="grid-combos-kids"></div>
+      </div>
+
+      <div class="panel" data-panel="solas" role="tabpanel" hidden>
+        <div class="incl">
+          <b>SOLO LA HAMBURGUESA</b>
+          <span>sin papas ni bebida · elegís pan, salsa y aderezos</span>
+        </div>
+
+        <div class="sec"><b>HAMBURGUESAS SOLAS</b><i></i></div>
+        <div class="grid" id="grid-solas"></div>
+
+        <div class="sec"><b class="brown">LOS CHIQUITOS</b><i></i></div>
+        <div class="grid" id="grid-solas-kids"></div>
       </div>
 
       <div class="panel soon" data-panel="pizzas" role="tabpanel" hidden><b>PIZZAS</b><span>Muy pronto por acá 👨‍🍳</span></div>
@@ -429,7 +443,6 @@ input, textarea { font-family: var(--f-body); }
       <div class="panel soon" data-panel="papas" role="tabpanel" hidden><b>PAPAS Y GUARNICIONES</b><span>Muy pronto por acá 👨‍🍳</span></div>
       <div class="panel soon" data-panel="vacio" role="tabpanel" hidden><b>PLATOS AL VACÍO</b><span>Muy pronto por acá 👨‍🍳</span></div>
       <div class="panel soon" data-panel="bebidas" role="tabpanel" hidden><b>BEBIDAS</b><span>Muy pronto por acá 👨‍🍳</span></div>
-      <div class="panel soon" data-panel="combos" role="tabpanel" hidden><b>COMBOS</b><span>Muy pronto por acá 👨‍🍳</span></div>
     </main>
 
     <aside class="cart" id="cart" aria-label="Tu pedido">
@@ -564,8 +577,15 @@ input, textarea { font-family: var(--f-body); }
     { key: 'lpp', code: 'LPP', name: 'La Pequeña Papina', badge: '1 MEDALLÓN', desc: '1 medallón de carne + cheddar + Salsa Tasty', quote: '“No necesita ser grande para darse un gustito.”' },
     { key: 'ltp', code: 'LTP', name: 'La Traviesa Papina', badge: '1 MEDALLÓN', desc: '1 medallón de pollo + cheddar + Salsa Tasty', quote: '“Se hace la inocente… pero viene con Tasty.”' }
   ];
+  function asCombo(p) { return Object.assign({}, p, { img: p.key, title: p.name, name: 'Combo ' + p.name }); }
+  function asSola(p) { return Object.assign({}, p, { key: 's_' + p.key, img: p.key, title: p.name, name: p.name + ' (sola)' }); }
+  function kid(key) { return KIDS.filter(function (k) { return k.key === key; })[0]; }
+  var COMBOS = PRODUCTS.map(asCombo);
+  var COMBOS_KIDS = [asCombo(kid('lpp'))];
+  var SOLAS = PRODUCTS.map(asSola);
+  var SOLAS_KIDS = [asSola(kid('lpp')), Object.assign({}, kid('pn'), { img: 'pn', title: kid('pn').name }), Object.assign({}, kid('ltp'), { img: 'ltp', title: kid('ltp').name })];
   var ALL = {};
-  PRODUCTS.concat(KIDS).forEach(function (p) { ALL[p.key] = p; });
+  COMBOS.concat(COMBOS_KIDS, SOLAS, SOLAS_KIDS).forEach(function (p) { ALL[p.key] = p; });
 
   var NOTE_CHIPS = ['Sin cebolla', 'Sin sal'];
   var MAX_LINES = 20;
@@ -644,11 +664,11 @@ input, textarea { font-family: var(--f-body); }
   function buildCard(p) {
     var card = h('article', { class: 'card' + (p.green ? ' green' : ''), 'data-key': p.key }, [
       h('div', { class: 'photo' }, [
-        h('img', { src: IMG[p.key], alt: p.name, loading: 'lazy', width: '340', height: '252' }),
+        h('img', { src: IMG[p.img || p.key], alt: p.title || p.name, loading: 'lazy', width: '340', height: '252' }),
         h('div', { class: 'badge', text: p.badge })
       ]),
       h('div', { class: 'cbody' }, [
-        h('div', { class: 'chead' }, [h('span', { class: 'code', text: p.code }), h('h3', { text: p.name })]),
+        h('div', { class: 'chead' }, [h('span', { class: 'code', text: p.code }), h('h3', { text: p.title || p.name })]),
         h('p', { class: 'desc', text: p.desc }),
         h('p', { class: 'quote', text: p.quote }),
         h('div', { class: 'cfoot' }, [
@@ -690,7 +710,7 @@ input, textarea { font-family: var(--f-body); }
     if (p.fries) list.push({ id: 'fries', title: 'Elegí tus papas', type: 'one', req: true, opts: o.fries });
     if (p.sauce !== false) list.push({ id: 'sauce', title: 'Elegí tu salsa', type: 'one', req: true, opts: o.sauce });
     if (p.extras !== false) list.push({ id: 'extras', title: 'Sumá aderezos', hint: 'podés elegir más de uno', type: 'many', req: false, opts: o.extras });
-    if (p.drink !== false) list.push({ id: 'drink', title: 'Elegí tu bebida', hint: 'incluida en el precio', type: 'one', req: true, opts: o.drinks, cols: 'two' });
+    if (p.drink !== false) list.push({ id: 'drink', title: 'Elegí tu bebida', hint: 'incluida en el precio', type: 'one', req: true, opts: o.drinks, cols: 'two', foot: 'Si elegís «Sin bebida», el precio del combo es el mismo.' });
     return list;
   }
   function openSheet(key, uid) {
@@ -698,7 +718,7 @@ input, textarea { font-family: var(--f-body); }
     var info = state.menu.products[key];
     if (!info || !info.available) return;
     var existing = uid ? state.lines.filter(function (l) { return l.uid === uid; })[0] : null;
-    if (!existing && state.lines.length >= MAX_LINES) { toast('Llegaste al máximo de ' + MAX_LINES + ' hamburguesas por pedido.'); return; }
+    if (!existing && state.lines.length >= MAX_LINES) { toast('Llegaste al máximo de ' + MAX_LINES + ' productos por pedido.'); return; }
     state.sheet = { key: key, uid: existing ? existing.uid : null, sel: existing ? clone(existing.sel) : defaultSel(key), sections: sectionsFor(key) };
     state.lastFocus = document.activeElement;
     var p = ALL[key];
@@ -735,7 +755,7 @@ input, textarea { font-family: var(--f-body); }
             [h('span', { class: 'mark' }), h('span', {}, [op.short, ns ? h('span', { class: 'ns', text: 'Sin stock' }) : null])]);
         })
       );
-      box.appendChild(h('section', { class: 'opt', 'data-opt': s.id }, [head, tiles]));
+      box.appendChild(h('section', { class: 'opt', 'data-opt': s.id }, [head, tiles, s.foot ? h('p', { class: 'opt-foot', text: s.foot }) : null]));
     });
     // Aclaraciones
     var chips = h('div', { class: 'tiles', role: 'group', 'aria-labelledby': 'h-notes' }, NOTE_CHIPS.map(function (t) {
@@ -828,7 +848,7 @@ input, textarea { font-family: var(--f-body); }
         ul.appendChild(h('li', { class: 'line' }, [
           h('div', { class: 'line-top' }, [h('span', { class: 'line-name', text: ALL[l.key].name }), h('span', { class: 'line-price', text: money(price(l.key)) })]),
           h('div', { class: 'line-opts', text: [d.main, d.extras ? '+ ' + d.extras : ''].filter(Boolean).join(' · ') }),
-          d.drink ? h('div', { class: 'line-drink', text: '🥤 ' + d.drink + ' (incluida)' }) : null,
+          d.drink ? h('div', { class: 'line-drink', text: '🥤 ' + d.drink + (l.sel.drink === 'sin_bebida' ? '' : ' (incluida)') }) : null,
           d.note ? h('div', { class: 'line-note', text: '“' + d.note + '”' }) : null,
           h('div', { class: 'line-act' }, [
             h('button', { type: 'button', 'data-act': 'edit', 'data-uid': l.uid, 'aria-label': 'Editar ' + ALL[l.key].name, text: 'Editar' }),
@@ -902,7 +922,7 @@ input, textarea { font-family: var(--f-body); }
     if (!line) return;
     if (act === 'edit') { openSheet(line.key, uid); return; }
     if (act === 'dup') {
-      if (state.lines.length >= MAX_LINES) { toast('Llegaste al máximo de ' + MAX_LINES + ' hamburguesas por pedido.'); return; }
+      if (state.lines.length >= MAX_LINES) { toast('Llegaste al máximo de ' + MAX_LINES + ' productos por pedido.'); return; }
       var i = state.lines.indexOf(line);
       state.lines.splice(i + 1, 0, { uid: state.uid++, key: line.key, sel: clone(line.sel) });
       toast(ALL[line.key].name + ' agregada otra vez');
@@ -1066,9 +1086,10 @@ input, textarea { font-family: var(--f-body); }
 
   // ───── arranque ─────
   function init() {
-    var ga = $('grid-adult'), gk = $('grid-kids');
-    PRODUCTS.forEach(function (p) { ga.appendChild(buildCard(p)); });
-    KIDS.forEach(function (p) { gk.appendChild(buildCard(p)); });
+    COMBOS.forEach(function (p) { $('grid-combos').appendChild(buildCard(p)); });
+    COMBOS_KIDS.forEach(function (p) { $('grid-combos-kids').appendChild(buildCard(p)); });
+    SOLAS.forEach(function (p) { $('grid-solas').appendChild(buildCard(p)); });
+    SOLAS_KIDS.forEach(function (p) { $('grid-solas-kids').appendChild(buildCard(p)); });
 
     var status = new URLSearchParams(window.location.search).get('pago');
     var pid = new URLSearchParams(window.location.search).get('payment_id') || new URLSearchParams(window.location.search).get('collection_id') || '';
