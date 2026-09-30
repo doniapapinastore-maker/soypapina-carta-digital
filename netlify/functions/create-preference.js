@@ -9,7 +9,8 @@
 //     Carga el pedido directo en Thinkion y devuelve { free: true }.
 //
 // IMPORTANTE: el celular NO manda precios ni montos. Los precios, el descuento y
-// el total se calculan acá, con el catálogo de menu.js, para que nadie pueda alterarlos.
+// el total se calculan acá, con el catálogo de menu.js (precios en vivo de Thinkion),
+// para que nadie pueda alterarlos.
 //
 // El ACCESS TOKEN de Mercado Pago NUNCA va en el código: se lee de una
 // variable de entorno configurada en Netlify (MP_ACCESS_TOKEN).
@@ -24,6 +25,7 @@ const {
   buildThinkionOrder,
   sendToThinkion,
   freeOrderId,
+  refreshPrices,
 } = require("./menu");
 
 const SITE_URL = process.env.SITE_URL || "https://soypapina.com.ar";
@@ -51,7 +53,7 @@ exports.handler = async (event) => {
     // {
     //   customer: { name, notes_general },
     //   pickup: true,                       // el cliente confirmó que retira en el local
-    //   coupon: "PRUEBA10",                 // opcional
+    //   coupon: "LACASAINVITA",             // opcional
     //   lines: [{ key, bread, fries, sauce, extras: [], drink, note }]
     // }
     const customer = body.customer || {};
@@ -60,6 +62,9 @@ exports.handler = async (event) => {
     if (body.pickup !== true) {
       return json(400, { error: "Falta confirmar el retiro en el local" });
     }
+
+    // Precios actualizados desde Thinkion (si Thinkion no responde, usa los últimos conocidos)
+    await refreshPrices();
 
     // Validamos el pedido y calculamos el total con el catálogo del servidor
     const norm = normalizeLines(body.lines);
@@ -129,15 +134,19 @@ exports.handler = async (event) => {
         },
       ];
     } else {
-      // Sin descuento: una fila por tipo de hamburguesa (con su cantidad).
+      // Sin descuento: una fila por tipo de producto (con su cantidad).
       // Las opciones (pan, papas, etc.) van a $0 y solo viajan a Thinkion.
-      const counts = {};
-      for (const l of norm.lines) counts[l.key] = (counts[l.key] || 0) + 1;
-      mpItems = Object.keys(counts).map((key) => ({
-        id: key,
-        title: CATALOG.products[key].name,
-        quantity: counts[key],
-        unit_price: CATALOG.products[key].price,
+      const groups = {};
+      for (const l of norm.lines) {
+        const g = l.key + "|" + l.price;
+        if (!groups[g]) groups[g] = { key: l.key, price: l.price, qty: 0 };
+        groups[g].qty += 1;
+      }
+      mpItems = Object.values(groups).map((g) => ({
+        id: g.key,
+        title: CATALOG.products[g.key].name,
+        quantity: g.qty,
+        unit_price: g.price,
         currency_id: "ARS",
       }));
     }

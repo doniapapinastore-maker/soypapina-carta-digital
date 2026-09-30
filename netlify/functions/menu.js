@@ -2,73 +2,74 @@
 //
 // FUENTE ÚNICA de productos, precios y opciones de la carta.
 //
-//  - La carta (index.html) le pide los precios a esta función cada vez que se abre.
+//  - Los PRECIOS se leen EN VIVO de Thinkion (API de reportes, reporte 132
+//    "Productos: Precios base"). Cambiás el precio en Thinkion y la carta lo toma sola
+//    (tarda como mucho 1 minuto).
+//  - Si Thinkion no responde, se usan los últimos precios que se leyeron bien, y si
+//    nunca se pudo leer, los precios de respaldo escritos acá abajo ("price").
 //  - create-preference.js y mp-webhook.js usan este mismo catálogo para calcular
 //    el total y armar el pedido, así que el celular del cliente NUNCA decide el precio.
 //
-// PARA CAMBIAR UN PRECIO: editá el número "price" de la hamburguesa acá abajo,
-// subí el archivo a GitHub y esperá el tilde verde en Netlify. Nada más.
-//
-// (Más adelante estos precios se pueden leer directo de Thinkion, reporte 132.)
+// Variables en Netlify que usa este archivo:
+//   THINKION_REPORT_TOKEN   token de la API de reportes (obligatoria para precios en vivo)
+//   THINKION_REPORT_URL     opcional (por defecto https://papi.thinkerp.cc/online/reporting/public/)
+//   THINKION_ESTABLISHMENT  opcional (por defecto 1)
+//   THINKION_NODE, THINKION_CLIENT_CODE, THINKION_TOKEN   (API de ventas, como siempre)
 
 const CATALOG = {
-  // ─── Hamburguesas ────────────────────────────────────────────────
-  // id  = id_product en Thinkion
-  // price = precio en pesos (PRECIOS DE REFERENCIA, cambiar por los reales)
-  // bread / fries = si esa hamburguesa lleva elección de pan / papas
-  // available = poné false para mostrarla como "Agotada" y que no se pueda pedir
+  // ─── Productos de la carta (hoy: combos) ─────────────────────────
+  // id    = id_product en Thinkion (solo productos con Validación = 1)
+  // price = precio de RESPALDO (el real viene de Thinkion)
+  // bread / fries / sauce / drink / extras = qué opciones se eligen en ese producto
+  // available = false para mostrarlo como "Agotada" y que no se pueda pedir
   products: {
-    ldv: { id: 1,   code: "LDV", name: "La Doble Vida",      price: 24000, bread: true,  fries: true,  available: true },
-    hdp: { id: 132, code: "HDP", name: "Hambre De Papina",   price: 19000, bread: true,  fries: true,  available: true },
-    tmb: { id: 134, code: "TMB", name: "Tenés Mucho Bacon",  price: 21000, bread: true,  fries: true,  available: true },
-    qlp: { id: 135, code: "QLP", name: "Qué Locura, Papina", price: 26000, bread: true,  fries: true,  available: true },
-    lp:  { id: 136, code: "LP",  name: "La Pecadora",        price: 22000, bread: true,  fries: true,  available: true },
-    lt:  { id: 137, code: "LT",  name: "La Traicionera",     price: 27000, bread: true,  fries: true,  available: true },
-    lc:  { id: 138, code: "LC",  name: "La Consentida",      price: 20000, bread: true,  fries: true,  available: true },
-    lm:  { id: 139, code: "LM",  name: "La Malcriada",       price: 25000, bread: true,  fries: true,  available: true },
-    lfs: { id: 140, code: "LFS", name: "La Falsa Sana",      price: 20000, bread: true,  fries: true,  available: true },
+    ldv: { id: 167, code: "LDV", name: "COMBO LDV La Doble Vida",      price: 18500, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
+    hdp: { id: 157, code: "HDP", name: "COMBO HDP Hambre de Papina",   price: 14000, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
+    tmb: { id: 158, code: "TMB", name: "COMBO TMB Tenes Mucho Bacon",  price: 15500, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
+    qlp: { id: 159, code: "QLP", name: "COMBO QLP Que Locura Papina",  price: 19900, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
+    lp:  { id: 160, code: "LP",  name: "COMBO LP LA PECADORA",         price: 16100, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
+    lt:  { id: 161, code: "LT",  name: "COMBO LT La Traicionera",      price: 20500, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
+    lc:  { id: 162, code: "LC",  name: "COMBO LC La Consentida",       price: 15000, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
+    lm:  { id: 163, code: "LM",  name: "COMBO LM La Malcriada",        price: 19000, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
+    lfs: { id: 164, code: "LFS", name: "COMBO LFS La Falsa Sana",      price: 14500, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
     // Los chiquitos
-    pn:  { id: 141, code: "PN",  name: "Papinuggets",        price: 19000, bread: false, fries: false, available: true },
-    lpp: { id: 142, code: "LPP", name: "La Pequeña Papina",  price: 19000, bread: true,  fries: true,  available: true },
-    ltp: { id: 143, code: "LTP", name: "La Traviesa Papina", price: 19000, bread: true,  fries: true,  available: true },
+    lpp: { id: 165, code: "LPP", name: "COMBO LPP La Pequeña Papina",  price: 13500, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
+    pn:  { id: 175, code: "PN",  name: "PAPINUGETTS",                  price: 10000, bread: false, fries: false, sauce: false, drink: false, extras: true, available: true },
+    ltp: { id: 143, code: "LTP", name: "La Traviesa Papina",           price: 0,     bread: false, fries: false, sauce: false, drink: false, extras: false, available: false, noLive: true },
   },
 
   // ─── Opciones (van a Thinkion como productos "hijos", a $0) ──────
   // label = texto completo (resumen y comprobante) · short = texto del botón
+  // available = false → se ve en gris con "Sin stock" y no se puede elegir
   bread: [
-    { key: "pan_papa",           id: 148, name: "PAN DE PAPA CLASICO",       label: "Pan de papa",                short: "Pan de papa" },
-    { key: "pan_papa_semillas",  id: 149, name: "PAN DE PAPA CON SEMILLAS",  label: "Pan de papa con semillas",   short: "Pan de papa con semillas" },
-    { key: "pan_papa_parmesano", id: 150, name: "PAN DE PAPA CON PARMESANO", label: "Pan de papa con parmesano",  short: "Pan de papa con parmesano" },
-    { key: "pan_clasico",          id: 146, name: "PAN CLASICO",               label: "Pan clásico",              short: "Pan clásico" },
-    { key: "pan_clasico_semillas", id: 147, name: "PAN CLASICO CON SEMILLAS",  label: "Pan clásico con semillas", short: "Pan clásico con semillas" },
+    { key: "pan_papa",           id: 173, name: "PAN DE PAPA CLASICO",   label: "Pan de papa clásico",       short: "Pan de papa clásico", available: true },
+    { key: "pan_papa_parmesano", id: 174, name: "PAN DE PAPA PARMESANO", label: "Pan de papa con parmesano", short: "Pan de papa con parmesano", available: true },
   ],
   fries: [
-    { key: "sazonadas", id: 144, name: "PAPAS REGULARES SAZONADAS", label: "Papas sazonadas", short: "Sazonadas", default: true },
-    { key: "clasicas",  id: 145, name: "PAPAS REGULARES CLASICAS",  label: "Papas clásicas",  short: "Clásicas" },
+    { key: "sazonadas", id: 169, name: "PAPAS FRITAS SAZONADAS", label: "Papas sazonadas", short: "Sazonadas", default: true, available: true },
+    { key: "clasicas",  id: 168, name: "PAPAS FRITAS CLASICAS",  label: "Papas clásicas",  short: "Clásicas", available: true },
   ],
   sauce: [
-    { key: "tasty", id: 151, name: "SALSA TASTY",         label: "Salsa Tasty", short: "Tasty", default: true },
-    { key: "honey", id: 152, name: "SALSA HONEY",         label: "Salsa Honey", short: "Honey" },
-    { key: "bbq",   id: 153, name: "SALSA BBQ - BARBECUE", label: "Salsa BBQ",  short: "BBQ" },
+    { key: "tasty", id: 170, name: "SALSA TASTY",       label: "Salsa Tasty",       short: "Tasty", default: true, available: true },
+    { key: "honey", id: 171, name: "SALSA SWEET HONEY", label: "Salsa Sweet Honey", short: "Sweet Honey", available: false },
   ],
   extras: [
-    { key: "mayonesa", id: 154, name: "MAYONESA", label: "Mayonesa", short: "Mayonesa" },
-    { key: "mostaza",  id: 155, name: "MOSTAZA",  label: "Mostaza",  short: "Mostaza" },
-    { key: "ketchup",  id: 156, name: "KETCHUP",  label: "Ketchup",  short: "Ketchup" },
+    { key: "mayonesa", id: 176, name: "MAYONESA", label: "Mayonesa", short: "Mayonesa", available: true },
+    { key: "mostaza",  id: 177, name: "MOSTAZA",  label: "Mostaza",  short: "Mostaza", available: true },
+    { key: "ketchup",  id: 178, name: "KETCHUP",  label: "Ketchup",  short: "Ketchup", available: true },
   ],
   drinks: [
-    { key: "agua_sin_gas", id: 8,   name: "AGUA SIN GAS",             label: "Agua sin gas",               short: "Agua sin gas" },
-    { key: "agua_con_gas", id: 4,   name: "AGUA CON GAS",             label: "Agua con gas",               short: "Agua con gas" },
-    { key: "sab_manzana",  id: 5,   name: "AGUA SABORIZADA MANZANA",  label: "Agua saborizada de manzana", short: "Agua saborizada de manzana" },
-    { key: "sab_pomelo",   id: 7,   name: "AGUA SABORIZADA POMELO",   label: "Agua saborizada de pomelo",  short: "Agua saborizada de pomelo" },
-    { key: "coca_500",     id: 32,  name: "COCA COLA 500",            label: "Coca-Cola 500",              short: "Coca-Cola 500" },
-    { key: "sevenup_500",  id: 116, name: "7 UP 500",                 label: "7up 500",                    short: "7up 500" },
+    { key: "coca_500",     id: 179, name: "COCA COLA 500ML",         label: "Coca-Cola 500",              short: "Coca-Cola 500", default: true, available: true },
+    { key: "agua_sin_gas", id: 8,   name: "AGUA SIN GAS",            label: "Agua sin gas",               short: "Agua sin gas", available: false },
+    { key: "agua_con_gas", id: 4,   name: "AGUA CON GAS",            label: "Agua con gas",               short: "Agua con gas", available: false },
+    { key: "sab_manzana",  id: 5,   name: "AGUA SABORIZADA MANZANA", label: "Agua saborizada de manzana", short: "Saborizada manzana", available: false },
+    { key: "sab_pomelo",   id: 7,   name: "AGUA SABORIZADA POMELO",  label: "Agua saborizada de pomelo",  short: "Saborizada pomelo", available: false },
+    { key: "sevenup_500",  id: 116, name: "7 UP 500",                label: "7up 500",                    short: "7up 500", available: false },
   ],
 };
 
 // ─── Descuentos y códigos ─────────────────────────────────────────────────
-// Descuentos: los mismos 3 que existen en Thinkion (id = id_discount en Thinkion).
-// percent = % que se descuenta del total del pedido (tiene que coincidir con Thinkion).
+// Descuentos: los mismos que existen en Thinkion (id = id_discount en Thinkion).
 CATALOG.discounts = {
   d10:    { id: 1, name: "Descuento 10% off", percent: 10 },
   duenos: { id: 2, name: "Consumo dueños",    percent: 99 },
@@ -78,16 +79,12 @@ CATALOG.discounts = {
 // Códigos que se le pueden dar a un cliente. Cada código apunta a un descuento.
 //   expires (opcional): último día válido, formato "2026-12-31" (hora de Argentina).
 // Para agregar un código: una línea nueva. Para anularlo: borrá la línea.
-// IMPORTANTE: los códigos que dan 100% ("casa") hacen pedidos GRATIS. Usá códigos
-// largos, difíciles de adivinar, y con fecha de vencimiento.
-// >>> Los códigos PRUEBA... son solo para probar: BORRALOS antes de abrir la carta al público.
+// IMPORTANTE: los códigos del 100% ("casa") hacen pedidos GRATIS.
 CATALOG.coupons = {
-  PRUEBA10:  { discount: "d10" },
-  PRUEBA99:  { discount: "duenos" },
-  PRUEBA100: { discount: "casa" },
+  LACASAINVITA: { discount: "casa" },
 };
 
-const MAX_LINES = 20; // hamburguesas por pedido
+const MAX_LINES = 20; // productos por pedido
 
 const byKey = (list) => Object.fromEntries(list.map((o) => [o.key, o]));
 const MAPS = {
@@ -98,60 +95,225 @@ const MAPS = {
   drinks: byKey(CATALOG.drinks),
 };
 
+// ─── Precios en vivo desde Thinkion (reporte 132) ─────────────────────────
+const REPORT_ID = 132;
+const PRICE_TTL_MS = 60 * 1000;       // precios leídos bien: se reusan 1 minuto
+const PRICE_RETRY_MS = 20 * 1000;     // si falló: se reintenta a los 20 segundos
+const REPORT_TIMEOUT_MS = 6000;
+const MAX_PAGES = 20;
+
+const priceState = {
+  source: "respaldo",   // "thinkion" cuando se leyó bien al menos una vez
+  updatedAt: null,      // fecha de la última lectura buena
+  nextTry: 0,
+  missing: [],          // ids de la carta que no vinieron en el reporte
+  lastError: null,
+  pending: null,
+};
+
+function todayAR() {
+  const f = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return f.format(new Date()); // AAAA-MM-DD
+}
+
+function parsePrice(v) {
+  if (typeof v === "number") return v;
+  let s = String(v == null ? "" : v).replace(/[^\d.,-]/g, "");
+  if (!s) return NaN;
+  if (/,\d{1,2}$/.test(s)) s = s.replace(/\./g, "").replace(",", "."); // 14.000,00
+  else s = s.replace(/,/g, "");                                        // 14,000.00 o 14000.00
+  return parseFloat(s);
+}
+
+function pickKey(row, names) {
+  const keys = Object.keys(row);
+  for (const n of names) {
+    const k = keys.find((x) => x.trim().toLowerCase() === n);
+    if (k) return k;
+  }
+  return null;
+}
+
+// Convierte una fila del reporte en { id, price } (o null si no se entiende).
+function readRow(row) {
+  if (Array.isArray(row)) {
+    if (row.length < 2) return null;
+    return { id: Number(row[0]), price: parsePrice(row[row.length - 1]) };
+  }
+  if (!row || typeof row !== "object") return null;
+  const kId = pickKey(row, ["id", "id_product", "id producto", "id_producto"]);
+  const kPrice = pickKey(row, ["precio", "price", "precio base", "precio_base"]);
+  if (!kId || !kPrice) return null;
+  return { id: Number(row[kId]), price: parsePrice(row[kPrice]) };
+}
+
+async function fetchReportPage(url, token, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REPORT_TIMEOUT_MS);
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json", "X-Server-Token": token },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const json = await resp.json().catch(() => null);
+    if (!resp.ok || !json || json.data === undefined) {
+      throw new Error(`reporte ${REPORT_ID}: http ${resp.status} ${json && json.message ? json.message : ""}`.trim());
+    }
+    return json;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function loadLivePrices() {
+  const token = process.env.THINKION_REPORT_TOKEN;
+  if (!token) throw new Error("Falta la variable THINKION_REPORT_TOKEN en Netlify");
+  const url = process.env.THINKION_REPORT_URL || "https://papi.thinkerp.cc/online/reporting/public/";
+  const est = Number(process.env.THINKION_ESTABLISHMENT || 1);
+  const day = todayAR();
+
+  const found = {};
+  let page = "";
+  for (let n = 0; n < MAX_PAGES; n++) {
+    const body = { id_report: REPORT_ID, date_init: day, date_end: day, establishments: [est] };
+    if (page) body.page = page;
+    const json = await fetchReportPage(url, token, body);
+    const rows = Array.isArray(json.data) ? json.data : [json.data];
+    for (const r of rows) {
+      const x = readRow(r);
+      if (!x || !Number.isFinite(x.id) || !Number.isFinite(x.price)) continue;
+      if (found[x.id] === undefined) found[x.id] = x.price;
+    }
+    if (!json.page || json.page === page) break;
+    page = json.page;
+  }
+  if (!Object.keys(found).length) throw new Error(`reporte ${REPORT_ID}: vino vacío o con columnas desconocidas`);
+  return found;
+}
+
+// Actualiza los precios del catálogo con los de Thinkion. Nunca tira error:
+// si falla, deja los últimos precios buenos (o los de respaldo).
+async function refreshPrices(force) {
+  const now = Date.now();
+  if (!force && now < priceState.nextTry) return priceState;
+  if (priceState.pending) return priceState.pending;
+
+  priceState.pending = (async () => {
+    try {
+      const live = await loadLivePrices();
+      const missing = [];
+      for (const p of Object.values(CATALOG.products)) {
+        if (p.noLive) continue;
+        const v = live[p.id];
+        if (Number.isFinite(v) && v > 0) p.price = Math.round(v);
+        else missing.push(p.id);
+      }
+      priceState.source = "thinkion";
+      priceState.updatedAt = new Date().toISOString();
+      priceState.missing = missing;
+      priceState.lastError = null;
+      priceState.nextTry = Date.now() + PRICE_TTL_MS;
+      if (missing.length) console.warn("Precios: estos ids no vinieron en el reporte 132 (uso respaldo):", missing.join(", "));
+    } catch (err) {
+      priceState.lastError = String((err && err.message) || err);
+      priceState.nextTry = Date.now() + PRICE_RETRY_MS;
+      console.error("Precios: no se pudieron leer de Thinkion, sigo con los últimos conocidos:", priceState.lastError);
+    } finally {
+      priceState.pending = null;
+    }
+    return priceState;
+  })();
+  return priceState.pending;
+}
+
+// ─── Validación del pedido ─────────────────────────────────────────────────
 const fail = (error) => ({ ok: false, error });
 
 function cleanText(v, max) {
   return String(v == null ? "" : v).replace(/\s+/g, " ").trim().slice(0, max);
 }
 
+const wants = (p, what) => p[what] !== false;
+
 // Valida lo que mandó el celular y lo deja en forma "limpia".
 // Devuelve { ok:true, lines, total } o { ok:false, error }.
-// opts.skipAvailability: lo usa el webhook, porque un pedido YA PAGADO se carga
-// en Thinkion aunque después el producto se haya marcado como agotado.
+// opts.skipAvailability: lo usa el webhook (un pedido YA PAGADO se carga igual).
+// opts.prices: precios ya cobrados (los usa el webhook), uno por línea.
 function normalizeLines(raw, opts) {
   const skipAvailability = !!(opts && opts.skipAvailability);
+  const fixedPrices = opts && Array.isArray(opts.prices) ? opts.prices : null;
   if (!Array.isArray(raw) || raw.length === 0) return fail("El pedido está vacío");
-  if (raw.length > MAX_LINES) return fail(`Máximo ${MAX_LINES} hamburguesas por pedido`);
+  if (raw.length > MAX_LINES) return fail(`Máximo ${MAX_LINES} productos por pedido`);
 
   const lines = [];
   let total = 0;
 
-  for (const r of raw) {
+  const pickOne = (map, key, p, errMsg) => {
+    const o = map[key];
+    if (!o) return { error: errMsg };
+    if (o.available === false && !skipAvailability) return { error: `${o.label} no tiene stock` };
+    return { key };
+  };
+
+  for (let i = 0; i < raw.length; i++) {
+    const r = raw[i];
     const p = CATALOG.products[r && r.key];
     if (!p) return fail("Producto desconocido");
     if (!p.available && !skipAvailability) return fail(`${p.name} no está disponible`);
 
-    const line = { key: r.key, bread: null, fries: null, sauce: null, extras: [], drink: null, note: "" };
+    const line = { key: r.key, bread: null, fries: null, sauce: null, extras: [], drink: null, note: "", price: p.price };
 
     if (p.bread) {
-      if (!MAPS.bread[r.bread]) return fail(`Falta elegir el pan de ${p.name}`);
-      line.bread = r.bread;
+      const x = pickOne(MAPS.bread, r.bread, p, `Falta elegir el pan de ${p.name}`);
+      if (x.error) return fail(x.error);
+      line.bread = x.key;
     }
     if (p.fries) {
-      if (!MAPS.fries[r.fries]) return fail(`Faltan elegir las papas de ${p.name}`);
-      line.fries = r.fries;
+      const x = pickOne(MAPS.fries, r.fries, p, `Faltan elegir las papas de ${p.name}`);
+      if (x.error) return fail(x.error);
+      line.fries = x.key;
     }
-    if (!MAPS.sauce[r.sauce]) return fail(`Falta elegir la salsa de ${p.name}`);
-    line.sauce = r.sauce;
-
-    if (!MAPS.drinks[r.drink]) return fail(`Falta elegir la bebida de ${p.name}`);
-    line.drink = r.drink;
-
-    const extras = Array.isArray(r.extras) ? r.extras : [];
-    for (const e of extras) {
-      if (MAPS.extras[e] && line.extras.indexOf(e) === -1) line.extras.push(e);
+    if (wants(p, "sauce")) {
+      const x = pickOne(MAPS.sauce, r.sauce, p, `Falta elegir la salsa de ${p.name}`);
+      if (x.error) return fail(x.error);
+      line.sauce = x.key;
+    }
+    if (wants(p, "drink")) {
+      const x = pickOne(MAPS.drinks, r.drink, p, `Falta elegir la bebida de ${p.name}`);
+      if (x.error) return fail(x.error);
+      line.drink = x.key;
+    }
+    if (wants(p, "extras")) {
+      const extras = Array.isArray(r.extras) ? r.extras : [];
+      for (const e of extras) {
+        const o = MAPS.extras[e];
+        if (!o || line.extras.indexOf(e) !== -1) continue;
+        if (o.available === false && !skipAvailability) return fail(`${o.label} no tiene stock`);
+        line.extras.push(e);
+      }
     }
     line.note = cleanText(r.note, 120);
 
+    if (fixedPrices && Number.isFinite(Number(fixedPrices[i])) && Number(fixedPrices[i]) > 0) {
+      line.price = Math.round(Number(fixedPrices[i]));
+    }
+
     lines.push(line);
-    total += p.price;
+    total += line.price;
   }
 
   return { ok: true, lines, total };
 }
 
 // Versión chiquita del pedido para guardarla en Mercado Pago (metadata)
-// y recuperarla cuando el pago se aprueba.
+// y recuperarla cuando el pago se aprueba. Incluye el precio cobrado.
 function compactCart(lines) {
   return lines.map((l) => ({
     k: l.key,
@@ -161,6 +323,7 @@ function compactCart(lines) {
     e: l.extras.join(","),
     d: l.drink || "",
     n: l.note || "",
+    p: l.price,
   }));
 }
 
@@ -176,13 +339,13 @@ function expandCart(cart) {
       drink: c.d,
       note: c.n,
     })),
-    { skipAvailability: true }
+    { skipAvailability: true, prices: cart.map((c) => c.p) }
   );
 }
 
-// Arma los ítems para Thinkion: cada hamburguesa es un ítem "padre" y sus
+// Arma los ítems para Thinkion: cada producto es un ítem "padre" y sus
 // opciones (pan, papas, salsa, aderezos, bebida) son ítems "hijos" (id_parent),
-// a $0, así en el KDS salen agrupados debajo de la hamburguesa.
+// a $0, así en el KDS salen agrupados debajo del producto.
 function buildThinkionItems(lines) {
   const items = [];
   let idItem = 0;
@@ -197,7 +360,7 @@ function buildThinkionItems(lines) {
       id_parent: 0,
       name: p.name,
       amount: 1,
-      price: p.price,
+      price: Number.isFinite(l.price) ? l.price : p.price,
       notes: l.note || "",
       ordering: ordering++,
     });
@@ -210,6 +373,7 @@ function buildThinkionItems(lines) {
     if (l.drink) kids.push(MAPS.drinks[l.drink]);
 
     for (const k of kids) {
+      if (!k) continue;
       items.push({
         id_item: ++idItem,
         id_product: k.id,
@@ -226,8 +390,6 @@ function buildThinkionItems(lines) {
 }
 
 // ─── Códigos de descuento ──────────────────────────────────────────────────
-// Devuelve { ok:true, code, key, id, name, percent } o { ok:false, error }.
-// opts.skipExpiry: lo usa el webhook (un pedido ya pagado no se rechaza porque el código venció).
 function resolveCoupon(raw, opts) {
   const skipExpiry = !!(opts && opts.skipExpiry);
   const code = String(raw == null ? "" : raw).toUpperCase().replace(/\s+/g, "");
@@ -250,15 +412,13 @@ function applyDiscount(subtotal, percent) {
   return { subtotal, discount, pay: subtotal - discount };
 }
 
-// ─── Thinkion ──────────────────────────────────────────────────────────────
+// ─── Thinkion (ventas) ─────────────────────────────────────────────────────
 const THINKION_TIMEOUT_MS = 8000;
 
 function thinkionUrl() {
   return `https://s${process.env.THINKION_NODE}.${process.env.THINKION_CLIENT_CODE}.thinkerp.cc/order/set/`;
 }
 
-// Arma el pedido completo en el formato de Thinkion.
-//   discount: { id, name, amount, code } o null      payment: { id_payment, name, total } o null
 function buildThinkionOrder(o) {
   const disc = o.discount && o.discount.amount > 0 ? o.discount : null;
   const notes = ["RETIRA EN EL LOCAL"];
@@ -273,7 +433,7 @@ function buildThinkionOrder(o) {
       total: { debt: o.debt, discount: disc ? disc.amount : 0 },
     },
     customer: {
-      id_customer: 1, // sin sistema de clientes propio todavía, usamos un ID fijo
+      id_customer: 1,
       name: o.name || "Cliente",
       surname: "",
       email: o.email || "sin-email@soypapina.com",
@@ -297,8 +457,6 @@ function buildThinkionOrder(o) {
   };
 }
 
-// Manda el pedido y devuelve { confirmed, httpOk, status, data }.
-// "confirmed" es true SOLO si Thinkion devuelve el id del pedido en la lista "confirm".
 async function sendToThinkion(order) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), THINKION_TIMEOUT_MS);
@@ -310,7 +468,7 @@ async function sendToThinkion(order) {
         "Content-Type": "application/json",
         "X-Server-Token": process.env.THINKION_TOKEN,
       },
-      body: JSON.stringify([order]), // Thinkion espera un ARRAY de pedidos
+      body: JSON.stringify([order]),
       signal: controller.signal,
     });
     let data = null;
@@ -331,29 +489,42 @@ async function sendToThinkion(order) {
   }
 }
 
-// Id para pedidos que NO pasan por Mercado Pago (100% de descuento).
-// Empieza con 99 para que nunca se confunda con el id de un pago.
 function freeOrderId() {
   return Number("99" + String(Date.now()).slice(-10));
 }
 
 // Endpoint público: la carta lo llama para conocer precios y opciones.
+// Para revisar de dónde salen los precios, abrí /.netlify/functions/menu y mirá "fuente".
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") {
     return { statusCode: 405, body: "Método no permitido" };
   }
+  await refreshPrices();
+
   const products = {};
   for (const [key, p] of Object.entries(CATALOG.products)) {
-    products[key] = { price: p.price, available: p.available, bread: p.bread, fries: p.fries };
+    products[key] = {
+      price: p.price,
+      available: p.available,
+      bread: p.bread,
+      fries: p.fries,
+      sauce: wants(p, "sauce"),
+      drink: wants(p, "drink"),
+      extras: wants(p, "extras"),
+    };
   }
   const opt = (list) =>
-    list.map((o) => ({ key: o.key, label: o.label, short: o.short, default: !!o.default }));
+    list.map((o) => ({ key: o.key, label: o.label, short: o.short, default: !!o.default, available: o.available !== false }));
 
   return {
     statusCode: 200,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     body: JSON.stringify({
       ok: true,
+      fuente: priceState.source,
+      actualizado: priceState.updatedAt,
+      sin_precio_en_thinkion: priceState.missing,
+      error_precios: priceState.lastError,
       products,
       options: {
         bread: opt(CATALOG.bread),
@@ -379,3 +550,4 @@ exports.applyDiscount = applyDiscount;
 exports.buildThinkionOrder = buildThinkionOrder;
 exports.sendToThinkion = sendToThinkion;
 exports.freeOrderId = freeOrderId;
+exports.refreshPrices = refreshPrices;
