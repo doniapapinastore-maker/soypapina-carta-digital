@@ -17,7 +17,7 @@
 //   THINKION_NODE, THINKION_CLIENT_CODE, THINKION_TOKEN   (API de ventas, como siempre)
 
 const CATALOG = {
-  // ─── Productos de la carta (hoy: combos) ─────────────────────────
+  // ─── Productos de la carta: combos y hamburguesas solas ──────────
   // id    = id_product en Thinkion (solo productos con Validación = 1)
   // price = precio de RESPALDO (el real viene de Thinkion)
   // bread / fries / sauce / drink / extras = qué opciones se eligen en ese producto
@@ -36,6 +36,18 @@ const CATALOG = {
     lpp: { id: 165, code: "LPP", name: "COMBO LPP La Pequeña Papina",  price: 13500, bread: true,  fries: true,  sauce: true,  drink: true,  extras: true, available: true },
     pn:  { id: 175, code: "PN",  name: "PAPINUGETTS",                  price: 10000, bread: false, fries: false, sauce: false, drink: false, extras: true, available: true },
     ltp: { id: 143, code: "LTP", name: "La Traviesa Papina",           price: 0,     bread: false, fries: false, sauce: false, drink: false, extras: false, available: false, noLive: true },
+
+    // Hamburguesas SOLAS (sin papas ni bebida): pan, salsa y aderezos
+    s_ldv: { id: 166, code: "LDV", name: "LDV La Doble Vida",      price: 13500, bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
+    s_hdp: { id: 132, code: "HDP", name: "HDP Hambre de Papina",   price: 9000,  bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
+    s_tmb: { id: 134, code: "TMB", name: "TMB Tenes Mucho Bacon",  price: 10500, bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
+    s_qlp: { id: 135, code: "QLP", name: "QLP Que Locura Papina",  price: 14900, bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
+    s_lp:  { id: 136, code: "LP",  name: "LP LA PECADORA",         price: 11500, bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
+    s_lt:  { id: 137, code: "LT",  name: "LT La Traicionera",      price: 15500, bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
+    s_lc:  { id: 138, code: "LC",  name: "LC La Consentida",       price: 9900,  bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
+    s_lm:  { id: 139, code: "LM",  name: "LM La Malcriada",        price: 14000, bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
+    s_lfs: { id: 140, code: "LFS", name: "LFS La Falsa Sana",      price: 9600,  bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
+    s_lpp: { id: 142, code: "LPP", name: "LPP La Pequeña Papina",  price: 8500,  bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
   },
 
   // ─── Opciones (van a Thinkion como productos "hijos", a $0) ──────
@@ -51,7 +63,7 @@ const CATALOG = {
   ],
   sauce: [
     { key: "tasty", id: 170, name: "SALSA TASTY",       label: "Salsa Tasty",       short: "Tasty", default: true, available: true },
-    { key: "honey", id: 171, name: "SALSA SWEET HONEY", label: "Salsa Sweet Honey", short: "Sweet Honey", available: false },
+    { key: "honey", id: 171, name: "SALSA SWEET HONEY", label: "Salsa Sweet Honey", short: "Sweet Honey", available: true },
   ],
   extras: [
     { key: "mayonesa", id: 176, name: "MAYONESA", label: "Mayonesa", short: "Mayonesa", available: true },
@@ -59,6 +71,7 @@ const CATALOG = {
     { key: "ketchup",  id: 178, name: "KETCHUP",  label: "Ketchup",  short: "Ketchup", available: true },
   ],
   drinks: [
+    { key: "sin_bebida",   id: null, name: "SIN BEBIDA",             label: "Sin bebida",                 short: "Sin bebida", available: true },
     { key: "coca_500",     id: 179, name: "COCA COLA 500ML",         label: "Coca-Cola 500",              short: "Coca-Cola 500", default: true, available: true },
     { key: "agua_sin_gas", id: 8,   name: "AGUA SIN GAS",            label: "Agua sin gas",               short: "Agua sin gas", available: false },
     { key: "agua_con_gas", id: 4,   name: "AGUA CON GAS",            label: "Agua con gas",               short: "Agua con gas", available: false },
@@ -361,7 +374,7 @@ function buildThinkionItems(lines) {
       name: p.name,
       amount: 1,
       price: Number.isFinite(l.price) ? l.price : p.price,
-      notes: l.note || "",
+      notes: [l.drink === "sin_bebida" ? "SIN BEBIDA" : "", l.note || ""].filter(Boolean).join(" - "),
       ordering: ordering++,
     });
 
@@ -373,7 +386,7 @@ function buildThinkionItems(lines) {
     if (l.drink) kids.push(MAPS.drinks[l.drink]);
 
     for (const k of kids) {
-      if (!k) continue;
+      if (!k || !k.id) continue; // "Sin bebida" no se manda como producto
       items.push({
         id_item: ++idItem,
         id_product: k.id,
