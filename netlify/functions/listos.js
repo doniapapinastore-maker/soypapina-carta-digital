@@ -42,9 +42,10 @@ function phoneId(endpoint) {
 function reply(statusCode, obj, cacheSeconds) {
   const headers = { "Content-Type": "application/json" };
   if (cacheSeconds) {
-    // Netlify guarda la respuesta unos segundos: muchos celulares preguntando cuestan casi nada
+    // Netlify guarda la respuesta muy poquito (2 s): muchos celulares preguntando cuestan casi nada,
+    // y el aviso llega casi en el acto. Nunca se entrega una respuesta vieja.
     headers["Cache-Control"] = "public, max-age=0, must-revalidate";
-    headers["Netlify-CDN-Cache-Control"] = `public, s-maxage=${cacheSeconds}, stale-while-revalidate=10`;
+    headers["Netlify-CDN-Cache-Control"] = `public, s-maxage=${cacheSeconds}`;
     headers["Netlify-Vary"] = "query=code";
   } else {
     headers["Cache-Control"] = "no-store";
@@ -88,12 +89,12 @@ const VIBRATE = [600, 200, 600, 200, 600, 200, 1200];
 
 function payloadFor(entry, kind) {
   if (kind === "reminder") {
-    return { title: "Tu pedido te espera 🍔", body: `Ya está listo para retirar en Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, url: "/" };
+    return { title: "Tu pedido te espera 🍔", body: `Ya está listo para retirar en Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
   }
   if (kind === "cancelled") {
-    return { title: "Hubo un problema con tu pedido", body: "Escribinos por WhatsApp y lo resolvemos.", tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, url: "/" };
+    return { title: "Hubo un problema con tu pedido", body: "Escribinos por WhatsApp y lo resolvemos.", tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "cancelled", url: "/" };
   }
-  return { title: "¡Tu pedido está listo! 🍔", body: `Pasá a retirarlo por Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, url: "/" };
+  return { title: "¡Tu pedido está listo! 🍔", body: `Pasá a retirarlo por Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
 }
 
 // Suscripciones de este código y este cliente
@@ -236,7 +237,7 @@ exports.handler = async (event) => {
         const e = await store.get(x.key, { type: "json" });
         if (e) list.push({ name: e.name, at: e.at, status: e.status || "ready" });
       }
-      return reply(200, { ok: true, ready: list }, 5);
+      return reply(200, { ok: true, ready: list }, 2);
     }
 
     // ───── Últimos pedidos listos ─────
