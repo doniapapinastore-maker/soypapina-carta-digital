@@ -278,7 +278,7 @@ input, textarea { font-family: var(--f-body); }
 .rc-title .rc-ok { width: 34px; height: 34px; font-size: 18px; }
 .rc-hero { width: 100%; border-radius: 16px; padding: 16px 14px; background: #fff; border: 3px solid var(--gold); display: flex; flex-direction: column; gap: 10px; text-align: left; }
 .rc-hero-top { display: flex; align-items: center; gap: 10px; }
-.rc-hero-top b { font-family: var(--f-display); font-weight: 400; font-size: 19px; line-height: 1.15; }
+.rc-hero-top b { font-family: var(--f-display); font-weight: 400; font-size: clamp(14px, 4.4vw, 19px); line-height: 1.15; white-space: nowrap; }
 .rc-hero p { margin: 0; font-size: 14px !important; font-weight: 700; color: var(--red) !important; line-height: 1.3; }
 .rc-dot { flex: 0 0 auto; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 0 rgba(243, 208, 138, 0.9); animation: rc-pulse 1.6s ease-out infinite; }
 @keyframes rc-pulse { to { box-shadow: 0 0 0 12px rgba(243, 208, 138, 0); } }
@@ -290,6 +290,15 @@ input, textarea { font-family: var(--f-body); }
 .rc-hero p#rc-hero-s.is-invite { color: var(--ink) !important; font-weight: 600; }
 .rc-hero p#rc-hero-s.is-invite b { color: var(--red); }
 .rc-hero p#rc-hero-s.is-ok { color: var(--green) !important; }
+.rc-list { width: 100%; display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed rgba(150, 96, 58, 0.4); padding-top: 8px; }
+.rc-list small { font-weight: 700; font-size: 11px; letter-spacing: 0.5px; color: var(--brown); }
+.rc-list div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; }
+.rc-list div b { font-family: var(--f-display); font-weight: 400; letter-spacing: 1px; }
+.rc-list .ok { color: var(--green); }
+.rc-list .bad { color: var(--red); }
+.rc-hero[data-state="ready"] .rc-list { border-color: rgba(255,255,255,0.4); }
+.rc-hero[data-state="ready"] .rc-list small, .rc-hero[data-state="ready"] .rc-list .ok { color: var(--cream); }
+.watch-pill .wp-t { white-space: normal; line-height: 1.25; }
 .rc-save { width: 100%; display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--brown); }
 .rc-save span { flex: 1 1 auto; text-align: left; }
 .rc-save a, .rc-save button { flex: 0 0 auto; min-height: 38px; padding: 0 12px; border-radius: 10px; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; }
@@ -577,12 +586,13 @@ input, textarea { font-family: var(--f-body); }
     <h2 id="rc-title" class="rc-title"><span class="rc-ok" aria-hidden="true">✓</span><span id="rc-title-t">¡Pedido confirmado!</span></h2>
 
     <div class="rc-hero" id="rc-hero" data-state="wait" role="status" aria-live="polite" hidden>
-      <div class="rc-hero-top"><span class="rc-dot" aria-hidden="true"></span><b id="rc-hero-t">Estamos preparando tu pedido</b></div>
+      <div class="rc-hero-top"><span class="rc-dot" aria-hidden="true"></span><b id="rc-hero-t">🍳 Preparando tu pedido</b></div>
       <div class="rc-code"><small>TU CÓDIGO<br>DE RETIRO</small><b id="rc-code">—</b></div>
       <p id="rc-hero-s"></p>
       <button class="rc-bell" type="button" id="rc-bell">🔔 Activar notificaciones</button>
       <p class="rc-bell-note" id="rc-bell-note" hidden></p>
       <a class="rc-help" id="rc-help" href="#" target="_blank" rel="noopener" hidden>💬 Escribinos por WhatsApp</a>
+      <div class="rc-list" id="rc-list" hidden></div>
     </div>
 
     <div class="rc-pick">📍 <b>Solo retiro en el local</b> · Sin envíos</div>
@@ -600,7 +610,7 @@ input, textarea { font-family: var(--f-body); }
       <div class="rc-mail">Además, Mercado Pago te mandó un mail con este mismo comprobante.</div>
     </details>
 
-    <div class="rc-save"><span>Tu comprobante:</span>
+    <div class="rc-save"><span>Comprobante:</span>
       <a id="rc-wa" href="#" target="_blank" rel="noopener">📱 WhatsApp</a>
       <button type="button" id="rc-copy">📋 Copiar</button>
     </div>
@@ -1145,74 +1155,97 @@ input, textarea { font-family: var(--f-body); }
   }
 
   // ───── aviso de "pedido listo" ─────
-  // 1) Mientras la página está abierta, pregunta cada 10 s si la cocina marcó el pedido en el KDS.
-  // 2) Si el cliente toca "Avisarme con una notificación", le llega una notificación al teléfono
-  //    aunque cierre la página, use otra app o bloquee el celular (Android; iPhone solo si
-  //    agregó la carta a la pantalla de inicio).
-  var WATCH_KEY = 'dp-watch';
-  var WATCH_MS = 90 * 60 * 1000; // se deja de esperar a los 90 minutos
-  var watch = null, watchTimer = null, audioCtx = null, wakeLock = null, swReg = null;
+  // Sigue hasta 5 pedidos a la vez (90 minutos cada uno).
+  // 1) Con la página abierta: pregunta cada 10 s y, cuando está listo, suena una alarma que se
+  //    repite hasta que el cliente toca la pantalla.
+  // 2) Con las notificaciones activadas: le llega una notificación al teléfono aunque cierre la
+  //    página. Una vez activadas, los pedidos siguientes quedan activados solos.
+  var WATCHES_KEY = 'dp-watches';
+  var WATCH_MS = 90 * 60 * 1000;
+  var WATCH_MAX = 5;
+  var watches = [], current = '', watchTimer = null, audioCtx = null, wakeLock = null, swReg = null, alarmTimer = null;
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then(function (r) { swReg = r; }).catch(function () {});
   }
 
   function normName(n) { return String(n || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
-  function saveWatch() { try { localStorage.setItem(WATCH_KEY, JSON.stringify(watch)); } catch (e) {} }
+  function saveWatches() { try { localStorage.setItem(WATCHES_KEY, JSON.stringify(watches)); } catch (e) {} }
+  function findWatch(code) { for (var i = 0; i < watches.length; i++) if (watches[i].code === String(code)) return watches[i]; return null; }
+  function waiting() { return watches.filter(function (w) { return w.state === 'wait'; }); }
+  function pushSupported() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+  function pushGranted() { return pushSupported() && Notification.permission === 'granted'; }
 
-  function startWatch(w, inReceipt) {
-    // Si ya se estaba siguiendo este mismo pedido (por ejemplo, al recargar), se conserva lo activado
+  function loadWatches() {
     try {
-      var prev = JSON.parse(localStorage.getItem(WATCH_KEY) || 'null');
-      if (prev && String(prev.code) === String(w.code)) {
-        if (w.push === undefined) w.push = prev.push;
-        if (!w.noPush) w.noPush = prev.noPush;
-        if (!w.state && prev.state) w.state = prev.state;
-      }
-    } catch (e) {}
-    watch = {
-      code: String(w.code), name: normName(w.name), since: Number(w.since) || Date.now(),
-      state: w.state || (w.ready ? 'ready' : 'wait'), push: !!w.push, noPush: w.noPush || ''
-    };
-    saveWatch();
-    paintWatch();
-    if (watch.state === 'wait') { keepAwake(); checkWatch(); }
+      var list = JSON.parse(localStorage.getItem(WATCHES_KEY) || '[]');
+      var old = JSON.parse(localStorage.getItem('dp-watch') || 'null'); // formato anterior (un solo pedido)
+      if (old && old.code) { list.push({ code: String(old.code), name: old.name, since: old.since, state: old.state || (old.ready ? 'ready' : 'wait'), push: !!old.push }); localStorage.removeItem('dp-watch'); }
+      var now = Date.now();
+      watches = (Array.isArray(list) ? list : []).filter(function (w) { return w && w.code && now - w.since < WATCH_MS; });
+    } catch (e) { watches = []; }
+    saveWatches();
   }
 
-  function stopWatch() {
+  function startWatch(w, inReceipt) {
+    var code = String(w.code);
+    var x = findWatch(code);
+    if (!x) {
+      x = { code: code, name: normName(w.name), since: Number(w.since) || Date.now(), state: 'wait', push: false, noPush: '' };
+      watches.push(x);
+      while (watches.length > WATCH_MAX) watches.shift();
+    }
+    if (inReceipt) current = code;
+    saveWatches();
+    paintWatch();
+    // Si el cliente ya activó las notificaciones antes, este pedido queda activado solo
+    if (x.state === 'wait' && !x.push && pushGranted()) subscribe(x).catch(function () {});
+    if (waiting().length) { keepAwake(); checkWatches(); }
+  }
+
+  function clearWatches() {
     clearTimeout(watchTimer);
-    watch = null;
+    stopAlarm();
+    watches = [];
     releaseAwake();
-    try { localStorage.removeItem(WATCH_KEY); } catch (e) {}
+    saveWatches();
     var pill = document.querySelector('.watch-pill'); if (pill) pill.remove();
   }
 
-  function checkWatch() {
+  function checkWatches() {
     clearTimeout(watchTimer);
-    if (!watch || watch.state !== 'wait') return;
-    if (Date.now() - watch.since > WATCH_MS) { stopWatch(); return; }
-    fetch(LISTOS_URL + '?code=' + encodeURIComponent(watch.code), { cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (!watch) return;
-        var mine = (d && d.ready || []).filter(function (x) {
-          return x.at >= watch.since - 60000 && (!x.name || normName(x.name) === watch.name);
-        });
-        if (!mine.length) return;
-        mine.sort(function (a, b) { return b.at - a.at; });
-        setState(mine[0].status === 'cancelled' ? 'cancel' : 'ready');
-      })
-      .catch(function () { /* sin conexión: se vuelve a probar */ })
-      .then(function () { if (watch && watch.state === 'wait') watchTimer = setTimeout(checkWatch, 10000); });
+    var now = Date.now();
+    var before = watches.length;
+    watches = watches.filter(function (w) { return now - w.since < WATCH_MS; });
+    if (watches.length !== before) { saveWatches(); paintWatch(); }
+    var list = waiting();
+    if (!list.length) { releaseAwake(); return; }
+    Promise.all(list.map(function (w) {
+      return fetch(LISTOS_URL + '?code=' + encodeURIComponent(w.code), { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var mine = (d && d.ready || []).filter(function (x) {
+            return x.at >= w.since - 60000 && (!x.name || normName(x.name) === w.name);
+          });
+          if (!mine.length || w.state !== 'wait') return;
+          mine.sort(function (a, b) { return b.at - a.at; });
+          setState(w, mine[0].status === 'cancelled' ? 'cancel' : 'ready');
+        })
+        .catch(function () { /* sin conexión: se vuelve a probar */ });
+    })).then(function () {
+      if (waiting().length) watchTimer = setTimeout(checkWatches, 10000);
+      else releaseAwake();
+    });
   }
 
-  function setState(st) {
-    watch.state = st;
-    saveWatch();
-    releaseAwake();
+  function setState(w, st) {
+    w.state = st;
+    saveWatches();
     paintWatch();
-    try { if (navigator.vibrate) navigator.vibrate(st === 'ready' ? [300, 150, 300, 150, 500] : [500, 200, 500]); } catch (e) {}
-    beep(st === 'ready' ? [880, 1175, 1568] : [440, 330]);
+    try { if (navigator.vibrate) navigator.vibrate(st === 'ready' ? [600, 200, 600, 200, 600, 200, 1200] : [800, 300, 800]); } catch (e) {}
+    startAlarm(st === 'ready');
+    // Si lo está viendo en pantalla, no hace falta el recordatorio
+    if (st === 'ready' && !document.hidden) ack(w);
     var base = document.title, n = 0;
     var flash = setInterval(function () {
       document.title = (n++ % 2) ? base : (st === 'ready' ? '✅ ¡Tu pedido está listo!' : '⚠️ Revisá tu pedido');
@@ -1220,25 +1253,46 @@ input, textarea { font-family: var(--f-body); }
     }, 1000);
   }
 
-  function beep(freqs) {
+  function ack(w) {
+    fetch(LISTOS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'ack', code: w.code, name: w.name }) }).catch(function () {});
+  }
+
+  // Alarma con la página abierta: unos 4 segundos, se repite hasta que el cliente toque la pantalla (máx. 1 minuto)
+  function playMelody(happy) {
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
-      var ctx = audioCtx || new Ctx();
+      var ctx = audioCtx || (audioCtx = new Ctx());
       if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
-      freqs.forEach(function (f, i) {
-        var t = i * 0.25, o = ctx.createOscillator(), g = ctx.createGain();
+      var notes = happy ? [784, 988, 1175, 1568, 1175, 1568, 1319, 1568] : [523, 392, 523, 392];
+      notes.forEach(function (f, i) {
+        var t = i * 0.45, o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'triangle';
         o.frequency.value = f;
         g.gain.setValueAtTime(0.0001, ctx.currentTime + t);
-        g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + t + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.35);
+        g.gain.exponentialRampToValueAtTime(0.45, ctx.currentTime + t + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.42);
         o.connect(g); g.connect(ctx.destination);
-        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.4);
+        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.45);
       });
     } catch (e) {}
   }
+  function startAlarm(happy) {
+    stopAlarm();
+    var until = Date.now() + 60000;
+    playMelody(happy);
+    alarmTimer = setInterval(function () {
+      if (Date.now() > until || document.hidden) { stopAlarm(); return; }
+      playMelody(happy);
+    }, 6000);
+  }
+  function stopAlarm() { clearInterval(alarmTimer); alarmTimer = null; }
+  ['click', 'touchstart', 'keydown'].forEach(function (ev) {
+    document.addEventListener(ev, function () { if (alarmTimer) stopAlarm(); }, true);
+  });
 
-  // Pantalla siempre encendida mientras espera (si el celular se bloquea, el aviso en la página no puede llegar)
+  // Pantalla siempre encendida mientras espera
   function keepAwake() {
     try {
       if (!('wakeLock' in navigator) || wakeLock || document.hidden) return;
@@ -1264,38 +1318,13 @@ input, textarea { font-family: var(--f-body); }
     return ios && !standalone;
   }
 
-  function bellNote(text) {
-    var n = $('rc-bell-note');
-    n.textContent = text;
-    n.hidden = !text;
-  }
+  function bellNote(text) { var n = $('rc-bell-note'); n.textContent = text; n.hidden = !text; }
 
-  // El cliente toca "Avisarme": se activa el sonido y se piden las notificaciones.
-  function enableAlerts() {
-    if (!watch) return;
-    try {
-      var Ctx = window.AudioContext || window.webkitAudioContext;
-      if (Ctx && !audioCtx) { audioCtx = new Ctx(); }
-      if (audioCtx && audioCtx.resume) audioCtx.resume();
-    } catch (e) {}
-    keepAwake();
-    var supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-    if (!supported) {
-      watch.noPush = isIphoneBrowser()
-        ? 'Dejá esta pantalla abierta y te avisamos acá con sonido. (En iPhone, para recibir la notificación aunque cierres la página, agregá la carta a tu pantalla de inicio: Compartir → Agregar a inicio.)'
-        : 'Dejá esta pantalla abierta y te avisamos acá con sonido.';
-      saveWatch();
-      paintWatch();
-      return;
-    }
-    $('rc-bell').disabled = true;
-    $('rc-bell').textContent = 'Activando…';
-    Notification.requestPermission().then(function (perm) {
-      if (perm !== 'granted') throw new Error('sin permiso');
-      return (swReg ? Promise.resolve(swReg) : navigator.serviceWorker.register('/sw.js')).then(function (r) {
-        swReg = r;
-        return navigator.serviceWorker.ready;
-      });
+  // Suscribe un pedido a las notificaciones (el permiso ya tiene que estar dado)
+  function subscribe(w) {
+    return (swReg ? Promise.resolve(swReg) : navigator.serviceWorker.register('/sw.js')).then(function (r) {
+      swReg = r;
+      return navigator.serviceWorker.ready;
     }).then(function (reg) {
       return reg.pushManager.getSubscription().then(function (sub) {
         return sub || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
@@ -1303,37 +1332,63 @@ input, textarea { font-family: var(--f-body); }
     }).then(function (sub) {
       return fetch(LISTOS_URL, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'subscribe', code: watch.code, name: watch.name, since: watch.since, subscription: sub.toJSON() })
+        body: JSON.stringify({ action: 'subscribe', code: w.code, name: w.name, since: w.since, subscription: sub.toJSON() })
       }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); });
     }).then(function () {
-      watch.push = true;
-      saveWatch();
-      paintWatch();
-    }).catch(function (err) {
-      watch.noPush = String(err && err.message) === 'sin permiso'
-        ? 'Sin notificaciones: dejá esta pantalla abierta y te avisamos acá con sonido.'
-        : 'No se pudo activar la notificación: dejá esta pantalla abierta y te avisamos acá con sonido.';
-      saveWatch();
+      w.push = true;
+      saveWatches();
       paintWatch();
     });
   }
 
+  // El cliente toca "Activar notificaciones": se activa el sonido y se piden las notificaciones
+  function enableAlerts() {
+    var w = findWatch(current);
+    if (!w) return;
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx && !audioCtx) audioCtx = new Ctx();
+      if (audioCtx && audioCtx.resume) audioCtx.resume();
+    } catch (e) {}
+    keepAwake();
+    if (!pushSupported()) {
+      w.noPush = isIphoneBrowser()
+        ? 'Dejá esta pantalla abierta y te avisamos acá con sonido. (En iPhone, para recibir la notificación aunque cierres la página, agregá la carta a tu pantalla de inicio: Compartir → Agregar a inicio.)'
+        : 'Dejá esta pantalla abierta y te avisamos acá con sonido.';
+      saveWatches(); paintWatch();
+      return;
+    }
+    $('rc-bell').disabled = true;
+    $('rc-bell').textContent = 'Activando…';
+    Notification.requestPermission().then(function (perm) {
+      if (perm !== 'granted') throw new Error('sin permiso');
+      // Se activan todos los pedidos que estén esperando
+      return Promise.all(waiting().filter(function (x) { return !x.push; }).map(subscribe));
+    }).catch(function (err) {
+      w.noPush = String(err && err.message) === 'sin permiso'
+        ? 'Sin notificaciones: dejá esta pantalla abierta y te avisamos acá con sonido.'
+        : 'No se pudo activar la notificación: dejá esta pantalla abierta y te avisamos acá con sonido.';
+      saveWatches(); paintWatch();
+    });
+  }
+
+  function stateText(st) { return st === 'ready' ? '✅ Listo' : (st === 'cancel' ? '⚠️ Problema' : '🍳 Preparando'); }
+
   function paintWatch() {
-    if (!watch) return;
-    var st = watch.state;
     var receiptOpen = !$('receipt').hidden;
-    if (receiptOpen) {
-      var hero = $('rc-hero');
-      hero.setAttribute('data-state', st);
-      $('rc-hero-t').textContent = st === 'ready' ? '¡Tu pedido está listo!' : (st === 'cancel' ? 'Hubo un problema con tu pedido' : 'Estamos preparando tu pedido');
+    var w = findWatch(current);
+    if (receiptOpen && w) {
+      var st = w.state;
+      $('rc-hero').setAttribute('data-state', st);
+      $('rc-hero-t').textContent = st === 'ready' ? '✅ ¡Tu pedido está listo!' : (st === 'cancel' ? '⚠️ Problema con tu pedido' : '🍳 Preparando tu pedido');
       var sub = $('rc-hero-s');
-      var invite = st === 'wait' && !watch.push && !watch.noPush;
+      var invite = st === 'wait' && !w.push && !w.noPush;
       sub.classList.toggle('is-invite', invite);
-      sub.classList.toggle('is-ok', st === 'wait' && watch.push);
+      sub.classList.toggle('is-ok', st === 'wait' && w.push);
       if (st === 'ready') sub.textContent = 'Pasá a retirarlo. Mostrá tu código al llegar.';
       else if (st === 'cancel') sub.textContent = 'Escribinos por WhatsApp y lo resolvemos.';
-      else if (watch.push) sub.innerHTML = '✅ <b>Notificaciones activadas.</b> Te avisamos cuando esté listo, ya podés cerrar la página.';
-      else if (watch.noPush) sub.textContent = watch.noPush;
+      else if (w.push) sub.innerHTML = '✅ <b>Notificaciones activadas.</b> Te avisamos cuando esté listo, ya podés cerrar la página.';
+      else if (w.noPush) sub.textContent = w.noPush;
       else sub.innerHTML = '🔔 <b>Activá las notificaciones</b> y podés cerrar la página o usar otra app: te avisamos cuando tu pedido esté listo.';
       $('rc-bell').hidden = !invite;
       $('rc-bell').disabled = false;
@@ -1341,20 +1396,36 @@ input, textarea { font-family: var(--f-body); }
       bellNote('');
       var help = $('rc-help');
       help.hidden = st !== 'cancel';
-      help.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent('Hola! Tengo un problema con mi pedido, código ' + watch.code + ' (' + watch.name + ').');
+      help.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent('Hola! Tengo un problema con mi pedido, código ' + w.code + ' (' + w.name + ').');
+      // Otros pedidos de este celular
+      var others = watches.filter(function (x) { return x.code !== w.code; });
+      var box = $('rc-list');
+      box.hidden = !others.length;
+      box.innerHTML = others.length ? '<small>TUS OTROS PEDIDOS</small>' + others.map(function (x) {
+        return '<div class="' + (x.state === 'ready' ? 'ok' : (x.state === 'cancel' ? 'bad' : '')) + '"><b>' + x.code + '</b><span>' + stateText(x.state) + '</span></div>';
+      }).join('') : '';
     }
     // Cartelito abajo cuando el comprobante está cerrado
     var pill = document.querySelector('.watch-pill');
-    if (receiptOpen) { if (pill) pill.remove(); return; }
+    if (receiptOpen || !watches.length) { if (pill) pill.remove(); return; }
     if (!pill) {
       pill = h('div', { class: 'watch-pill', role: 'status' }, [h('span', { class: 'wp-t' }), h('button', { type: 'button', 'aria-label': 'Ocultar', text: '✕' })]);
-      pill.querySelector('button').addEventListener('click', stopWatch);
+      pill.querySelector('button').addEventListener('click', clearWatches);
       document.body.appendChild(pill);
     }
-    pill.classList.toggle('is-ready', st === 'ready');
-    pill.classList.toggle('is-cancel', st === 'cancel');
-    pill.querySelector('.wp-t').textContent = st === 'ready' ? '✅ Pedido ' + watch.code + ': ¡listo para retirar!'
-      : (st === 'cancel' ? '⚠️ Pedido ' + watch.code + ': escribinos por WhatsApp' : '🍳 Pedido ' + watch.code + ': preparándose…');
+    var anyReady = watches.some(function (x) { return x.state === 'ready'; });
+    var anyCancel = watches.some(function (x) { return x.state === 'cancel'; });
+    pill.classList.toggle('is-ready', anyReady && !anyCancel);
+    pill.classList.toggle('is-cancel', anyCancel);
+    var text;
+    if (watches.length === 1) {
+      var x = watches[0];
+      text = x.state === 'ready' ? '✅ Pedido ' + x.code + ': ¡listo para retirar!'
+        : (x.state === 'cancel' ? '⚠️ Pedido ' + x.code + ': escribinos por WhatsApp' : '🍳 Pedido ' + x.code + ': preparándose…');
+    } else {
+      text = watches.map(function (y) { return y.code + ' ' + stateText(y.state); }).join(' · ');
+    }
+    pill.querySelector('.wp-t').textContent = text;
   }
 
   document.addEventListener('click', function (e) {
@@ -1362,7 +1433,7 @@ input, textarea { font-family: var(--f-body); }
   });
 
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden && watch && watch.state === 'wait') { keepAwake(); checkWatch(); }
+    if (!document.hidden && waiting().length) { keepAwake(); checkWatches(); }
   });
 
   // ───── avisos ─────
@@ -1391,14 +1462,9 @@ input, textarea { font-family: var(--f-body); }
 
     var status = new URLSearchParams(window.location.search).get('pago');
     var pid = new URLSearchParams(window.location.search).get('payment_id') || new URLSearchParams(window.location.search).get('collection_id') || '';
-    if (status !== 'exito') {
-      // Si el cliente tiene un pedido en preparación, se retoma el seguimiento (cartelito abajo)
-      try {
-        var saved = JSON.parse(localStorage.getItem(WATCH_KEY) || 'null');
-        if (saved && saved.code && Date.now() - saved.since < WATCH_MS) startWatch(saved, false);
-        else if (saved) localStorage.removeItem(WATCH_KEY);
-      } catch (e) {}
-    }
+    // Pedidos que este celular sigue esperando (cartelito abajo)
+    loadWatches();
+    if (status !== 'exito' && watches.length) { paintWatch(); checkWatches(); }
     if (status === 'exito') showReceipt(pid);
     else if (status === 'fallo') notice('El pago no se pudo completar. Podés intentar de nuevo.');
     else if (status === 'pendiente') notice('Tu pago está pendiente de confirmación. Te avisamos apenas se acredite.');
