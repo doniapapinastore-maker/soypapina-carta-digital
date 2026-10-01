@@ -292,13 +292,31 @@ input, textarea { font-family: var(--f-body); }
 .rc-hero p#rc-hero-s.is-ok { color: var(--green) !important; }
 .rc-list { width: 100%; display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed rgba(150, 96, 58, 0.4); padding-top: 8px; }
 .rc-list small { font-weight: 700; font-size: 11px; letter-spacing: 0.5px; color: var(--brown); }
-.rc-list div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; }
-.rc-list div b { font-family: var(--f-display); font-weight: 400; letter-spacing: 1px; }
-.rc-list .ok { color: var(--green); }
-.rc-list .bad { color: var(--red); }
+.rc-list > div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; }
+.rc-list > div b { font-family: var(--f-display); font-weight: 400; letter-spacing: 1px; }
+.rc-list > div.ok { color: var(--green); }
+.rc-list > div.bad { color: var(--red); }
 .rc-hero[data-state="ready"] .rc-list { border-color: rgba(255,255,255,0.4); }
-.rc-hero[data-state="ready"] .rc-list small, .rc-hero[data-state="ready"] .rc-list .ok { color: var(--cream); }
-.watch-pill .wp-t { white-space: normal; line-height: 1.25; }
+.rc-hero[data-state="ready"] .rc-list small { color: var(--cream); }
+.watch-pill .wp-t { white-space: normal; line-height: 1.25; cursor: pointer; }
+.rc-list .od, .os-list .od { border: 1px solid rgba(150, 96, 58, 0.35); border-radius: 10px; padding: 6px 10px; background: #fff; color: var(--ink); }
+.od summary { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; cursor: pointer; list-style: none; }
+.od summary::-webkit-details-marker { display: none; }
+.od summary b { font-family: var(--f-display); font-weight: 400; letter-spacing: 1px; }
+.od summary span::after { content: ' ▾'; }
+.od[open] summary span::after { content: ' ▴'; }
+.od.ok summary span { color: var(--green); }
+.od.bad summary span { color: var(--red); }
+.od-items { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; text-align: left; }
+.od-items .rc-item b { font-size: 13px; }
+.od-tot { display: flex; justify-content: space-between; border-top: 1px dashed rgba(150, 96, 58, 0.4); padding-top: 5px; font-weight: 700; }
+.orders-sheet { position: fixed; inset: 0; z-index: 400; background: rgba(51, 32, 15, 0.55); display: flex; align-items: flex-start; justify-content: center; padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px 12px; overflow-y: auto; }
+.os-box { width: 100%; max-width: 440px; background: var(--paper); border: 2px solid var(--brown); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.os-head { display: flex; align-items: center; justify-content: space-between; }
+.os-head b { font-family: var(--f-display); font-weight: 400; font-size: 20px; }
+.os-x { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--ink); color: var(--cream); font-size: 15px; cursor: pointer; }
+.os-list { display: flex; flex-direction: column; gap: 8px; }
+.os-note { margin: 0; font-size: 12px; color: var(--brown); text-align: center; }
 .rc-save { width: 100%; display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--brown); }
 .rc-save span { flex: 1 1 auto; text-align: left; }
 .rc-save a, .rc-save button { flex: 0 0 auto; min-height: 38px; padding: 0 12px; border-radius: 10px; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; }
@@ -1153,7 +1171,14 @@ input, textarea { font-family: var(--f-body); }
     // (el seguimiento queda guardado y se muestra como cartelito al volver a la carta)
     $('receipt').hidden = false;
     document.body.style.overflow = 'hidden';
-    if (code) startWatch({ code: code, name: name, since: (pending && pending.orderedAt) || Date.now() }, true);
+    if (code) startWatch({
+      code: code, name: name, since: (pending && pending.orderedAt) || Date.now(),
+      detail: {
+        time: dateStr,
+        items: items.map(function (i) { return { name: i.name, detail: i.detail || '', drink: i.drink || '', note: i.note || '' }; }),
+        notes: notes, total: tot, discount: disc ? disc.name : ''
+      }
+    }, true);
     $('rc-again').focus();
   }
 
@@ -1225,7 +1250,7 @@ input, textarea { font-family: var(--f-body); }
     refresh();
     var x = findWatch(code);
     if (!x) {
-      x = { code: code, name: normName(w.name), since: Number(w.since) || Date.now(), state: 'wait', push: false, noPush: '' };
+      x = { code: code, name: normName(w.name), since: Number(w.since) || Date.now(), state: 'wait', push: false, noPush: '', detail: w.detail || null };
       watches.push(x);
       while (watches.length > WATCH_MAX) watches.shift();
     }
@@ -1409,6 +1434,49 @@ input, textarea { font-family: var(--f-body); }
   function isMinimized() { try { return sessionStorage.getItem('dp-watch-min') === '1'; } catch (e) { return false; } }
   function setMinimized(v) { try { if (v) sessionStorage.setItem('dp-watch-min', '1'); else sessionStorage.removeItem('dp-watch-min'); } catch (e) {} }
 
+  // Detalle de un pedido guardado (productos, total) para poder revisarlo después
+  function detailNode(x) {
+    var d = x.detail;
+    if (!d || !d.items) return h('div', { class: 'od-items' }, [h('div', { text: 'Sin detalle guardado.' })]);
+    var kids = d.items.map(function (i) {
+      return h('div', { class: 'rc-item' }, [
+        h('b', { text: '1 × ' + i.name }),
+        i.detail ? h('div', { text: i.detail }) : null,
+        i.drink ? h('div', { text: 'Bebida: ' + i.drink }) : null,
+        i.note ? h('div', { text: 'Obs: ' + i.note }) : null
+      ]);
+    });
+    if (d.notes) kids.push(h('div', { class: 'rc-item' }, [h('b', { text: 'Obs. generales:' }), h('div', { text: d.notes })]));
+    kids.push(h('div', { class: 'od-tot' }, [h('span', { text: 'Total' + (d.discount ? ' (' + d.discount + ')' : '') }), h('b', { text: d.total != null ? money(d.total) : '—' })]));
+    return h('div', { class: 'od-items' }, kids);
+  }
+
+  function orderCard(x, open) {
+    var cls = x.state === 'ready' ? 'ok' : (x.state === 'cancel' ? 'bad' : '');
+    var det = h('details', { class: 'od ' + cls }, [
+      h('summary', {}, [h('b', { text: x.code }), h('span', { text: (x.detail && x.detail.time ? x.detail.time.split(' ')[1] + ' · ' : '') + stateText(x.state) })]),
+      detailNode(x)
+    ]);
+    if (open) det.open = true;
+    return det;
+  }
+
+  // Hoja "Tus pedidos": se abre tocando el cartel de arriba
+  function openOrders() {
+    refresh();
+    var old = document.querySelector('.orders-sheet'); if (old) old.remove();
+    var list = watches.slice().reverse();
+    var sheet = h('div', { class: 'orders-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Tus pedidos' }, [
+      h('div', { class: 'os-box' }, [
+        h('div', { class: 'os-head' }, [h('b', { text: 'Tus pedidos' }), h('button', { type: 'button', class: 'os-x', 'aria-label': 'Cerrar', text: '✕' })]),
+        h('div', { class: 'os-list' }, list.map(function (x, k) { return orderCard(x, k === 0); })),
+        h('p', { class: 'os-note', text: 'Mostrá tu código al retirar. Los pedidos se borran solos 30 minutos después de estar listos.' })
+      ])
+    ]);
+    sheet.addEventListener('click', function (e) { if (e.target === sheet || (e.target.classList && e.target.classList.contains('os-x'))) sheet.remove(); });
+    document.body.appendChild(sheet);
+  }
+
   function stateText(st) { return st === 'ready' ? '✅ Listo' : (st === 'cancel' ? '⚠️ Problema' : '🍳 Preparando'); }
 
   function paintWatch() {
@@ -1439,9 +1507,11 @@ input, textarea { font-family: var(--f-body); }
       var others = watches.filter(function (x) { return x.code !== w.code; });
       var box = $('rc-list');
       box.hidden = !others.length;
-      box.innerHTML = others.length ? '<small>TUS OTROS PEDIDOS</small>' + others.map(function (x) {
-        return '<div class="' + (x.state === 'ready' ? 'ok' : (x.state === 'cancel' ? 'bad' : '')) + '"><b>' + x.code + '</b><span>' + stateText(x.state) + '</span></div>';
-      }).join('') : '';
+      box.textContent = '';
+      if (others.length) {
+        box.appendChild(h('small', { text: 'TUS OTROS PEDIDOS · tocá para ver el detalle' }));
+        others.forEach(function (x) { box.appendChild(orderCard(x, false)); });
+      }
     }
     // Cartelito arriba cuando el comprobante está cerrado. La ✕ solo lo achica (no borra nada).
     var pill = document.querySelector('.watch-pill');
@@ -1464,7 +1534,8 @@ input, textarea { font-family: var(--f-body); }
     if (mini) mini.remove();
     if (!pill) {
       pill = h('div', { class: 'watch-pill', role: 'status' }, [h('span', { class: 'wp-t' }), h('button', { type: 'button', 'aria-label': 'Achicar', text: '✕' })]);
-      pill.querySelector('button').addEventListener('click', function () { setMinimized(true); paintWatch(); });
+      pill.querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); setMinimized(true); paintWatch(); });
+      pill.querySelector('.wp-t').addEventListener('click', openOrders);
       document.body.appendChild(pill);
     }
     pill.classList.toggle('is-ready', anyReady && !anyCancel);
@@ -1477,7 +1548,7 @@ input, textarea { font-family: var(--f-body); }
     } else {
       text = watches.map(function (y) { return y.code + ' ' + stateText(y.state); }).join(' · ');
     }
-    pill.querySelector('.wp-t').textContent = text;
+    pill.querySelector('.wp-t').textContent = text + '  ›';
   }
 
   document.addEventListener('click', function (e) {
