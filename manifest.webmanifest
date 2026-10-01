@@ -1,0 +1,9 @@
+{
+  "name": "Doña Papina",
+  "short_name": "Doña Papina",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8EDD6",
+  "theme_color": "#B3402A",
+  "lang": "es-AR"
+}
