@@ -317,10 +317,13 @@ input, textarea { font-family: var(--f-body); }
 .rc-more summary::after { content: ' ▾'; }
 .rc-more[open] summary::after { content: ' ▴'; }
 .rc-more > *:not(summary) { margin-top: 10px; }
-.watch-pill { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 150; display: flex; align-items: center; gap: 10px; max-width: calc(100% - 24px); padding: 8px 8px 8px 14px; border-radius: 999px; background: var(--ink); color: var(--cream); font-weight: 700; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); }
+.watch-pill { position: fixed; left: 0; right: 0; margin: 0 auto; width: max-content; top: calc(env(safe-area-inset-top, 0px) + 10px); z-index: 150; display: flex; align-items: center; gap: 10px; max-width: calc(100% - 24px); padding: 8px 8px 8px 14px; border-radius: 999px; background: var(--ink); color: var(--cream); font-weight: 700; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); }
 .watch-pill.is-ready { background: var(--green); font-size: 14px; }
 .watch-pill.is-cancel { background: var(--red); }
 .watch-pill button { flex: 0 0 auto; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgba(255,255,255,0.18); color: inherit; font-size: 14px; cursor: pointer; }
+.watch-min { position: fixed; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 10px); z-index: 150; min-width: 46px; height: 46px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--ink); color: var(--cream); font-weight: 800; font-size: 15px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); cursor: pointer; }
+.watch-min.is-ready { background: var(--green); }
+.watch-min.is-cancel { background: var(--red); }
 @media (prefers-reduced-motion: reduce) { .rc-dot, .rc-hero { animation: none !important; } }
 
 /* ───────── Comprobante ───────── */
@@ -1157,7 +1160,7 @@ input, textarea { font-family: var(--f-body); }
   // ───── aviso de "pedido listo" ─────
   // Sigue hasta 5 pedidos a la vez: mientras se preparan (tope 2 horas) y hasta 30 minutos
   // después de listos o anulados. La lista se comparte entre todas las pestañas de la carta.
-  // 1) Con la página abierta: pregunta cada 10 s y, cuando está listo, suena una alarma que se
+  // 1) Con la página abierta: pregunta cada 5 s y, cuando está listo, suena una alarma que se
   //    repite hasta que el cliente toca la pantalla.
   // 2) Con las notificaciones activadas: le llega una notificación al teléfono aunque cierre la
   //    página. Una vez activadas, los pedidos siguientes quedan activados solos.
@@ -1169,6 +1172,14 @@ input, textarea { font-family: var(--f-body); }
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then(function (r) { swReg = r; }).catch(function () {});
+    // Cuando llega la notificación, el aviso le pasa la novedad a la página abierta en el acto
+    navigator.serviceWorker.addEventListener('message', function (e) {
+      var d = e.data || {};
+      if (d.type !== 'pedido' || !d.code) return;
+      refresh();
+      var w = findWatch(d.code);
+      if (w && w.state === 'wait') setState(w, d.status === 'cancelled' ? 'cancel' : 'ready');
+    });
   }
 
   function normName(n) { return String(n || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
@@ -1226,14 +1237,6 @@ input, textarea { font-family: var(--f-body); }
     if (waiting().length) { keepAwake(); checkWatches(); }
   }
 
-  function clearWatches() {
-    clearTimeout(watchTimer);
-    stopAlarm();
-    watches = [];
-    releaseAwake();
-    saveWatches();
-    var pill = document.querySelector('.watch-pill'); if (pill) pill.remove();
-  }
 
   function checkWatches() {
     clearTimeout(watchTimer);
@@ -1256,7 +1259,7 @@ input, textarea { font-family: var(--f-body); }
         .catch(function () { /* sin conexión: se vuelve a probar */ });
     })).then(function () {
       paintWatch();
-      if (waiting().length) watchTimer = setTimeout(checkWatches, 10000);
+      if (waiting().length) watchTimer = setTimeout(checkWatches, 5000);
       else releaseAwake();
     });
   }
@@ -1266,6 +1269,7 @@ input, textarea { font-family: var(--f-body); }
     var w = update(w0.code, function (x) {
       if (x.state === 'wait') { x.state = st; x.doneAt = Date.now(); changed = true; }
     });
+    if (changed) setMinimized(false);
     paintWatch();
     if (!w || !changed) return; // otra pestaña ya avisó
     try { if (navigator.vibrate) navigator.vibrate(st === 'ready' ? [600, 200, 600, 200, 600, 200, 1200] : [800, 300, 800]); } catch (e) {}
@@ -1401,6 +1405,10 @@ input, textarea { font-family: var(--f-body); }
     });
   }
 
+  // Cartel achicado (se guarda por pestaña; si un pedido pasa a listo, se vuelve a mostrar grande)
+  function isMinimized() { try { return sessionStorage.getItem('dp-watch-min') === '1'; } catch (e) { return false; } }
+  function setMinimized(v) { try { if (v) sessionStorage.setItem('dp-watch-min', '1'); else sessionStorage.removeItem('dp-watch-min'); } catch (e) {} }
+
   function stateText(st) { return st === 'ready' ? '✅ Listo' : (st === 'cancel' ? '⚠️ Problema' : '🍳 Preparando'); }
 
   function paintWatch() {
@@ -1435,16 +1443,30 @@ input, textarea { font-family: var(--f-body); }
         return '<div class="' + (x.state === 'ready' ? 'ok' : (x.state === 'cancel' ? 'bad' : '')) + '"><b>' + x.code + '</b><span>' + stateText(x.state) + '</span></div>';
       }).join('') : '';
     }
-    // Cartelito abajo cuando el comprobante está cerrado
+    // Cartelito arriba cuando el comprobante está cerrado. La ✕ solo lo achica (no borra nada).
     var pill = document.querySelector('.watch-pill');
-    if (receiptOpen || !watches.length) { if (pill) pill.remove(); return; }
-    if (!pill) {
-      pill = h('div', { class: 'watch-pill', role: 'status' }, [h('span', { class: 'wp-t' }), h('button', { type: 'button', 'aria-label': 'Ocultar', text: '✕' })]);
-      pill.querySelector('button').addEventListener('click', clearWatches);
-      document.body.appendChild(pill);
-    }
+    var mini = document.querySelector('.watch-min');
+    if (receiptOpen || !watches.length) { if (pill) pill.remove(); if (mini) mini.remove(); return; }
     var anyReady = watches.some(function (x) { return x.state === 'ready'; });
     var anyCancel = watches.some(function (x) { return x.state === 'cancel'; });
+    if (isMinimized()) {
+      if (pill) pill.remove();
+      if (!mini) {
+        mini = h('button', { class: 'watch-min', type: 'button', 'aria-label': 'Ver mis pedidos' });
+        mini.addEventListener('click', function () { setMinimized(false); paintWatch(); });
+        document.body.appendChild(mini);
+      }
+      mini.classList.toggle('is-ready', anyReady && !anyCancel);
+      mini.classList.toggle('is-cancel', anyCancel);
+      mini.textContent = (anyCancel ? '⚠️' : (anyReady ? '✅' : '🍳')) + ' ' + watches.length;
+      return;
+    }
+    if (mini) mini.remove();
+    if (!pill) {
+      pill = h('div', { class: 'watch-pill', role: 'status' }, [h('span', { class: 'wp-t' }), h('button', { type: 'button', 'aria-label': 'Achicar', text: '✕' })]);
+      pill.querySelector('button').addEventListener('click', function () { setMinimized(true); paintWatch(); });
+      document.body.appendChild(pill);
+    }
     pill.classList.toggle('is-ready', anyReady && !anyCancel);
     pill.classList.toggle('is-cancel', anyCancel);
     var text;

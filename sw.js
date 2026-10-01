@@ -8,7 +8,11 @@ self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim(
 self.addEventListener('push', function (event) {
   var d = {};
   try { d = event.data ? event.data.json() : {}; } catch (e) { d = { body: event.data && event.data.text() }; }
-  event.waitUntil(self.registration.showNotification(d.title || 'Doña Papina', {
+  // Le avisamos en el acto a las páginas de la carta que estén abiertas (así el cartel cambia junto con la notificación)
+  var tell = self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+    list.forEach(function (c) { c.postMessage({ type: 'pedido', code: d.code || '', status: d.status || 'ready' }); });
+  }).catch(function () {});
+  event.waitUntil(Promise.all([tell, self.registration.showNotification(d.title || 'Doña Papina', {
     body: d.body || '',
     tag: d.tag || 'pedido',
     renotify: true,
@@ -16,7 +20,7 @@ self.addEventListener('push', function (event) {
     silent: false,
     vibrate: d.vibrate || [600, 200, 600, 200, 600, 200, 1200],
     data: { url: d.url || '/', code: d.code || '', name: d.name || '' }
-  }));
+  })]));
 });
 
 self.addEventListener('notificationclick', function (event) {
