@@ -445,16 +445,19 @@ function customerIdFor(name) {
   return 100000000 + (h % 900000000); // entre 100.000.000 y 999.999.999
 }
 
-// Código de retiro de 4 cifras: lo ve el cliente en su celular y la cocina en el KDS.
-function pickupCode() {
-  return String(1000 + Math.floor(Math.random() * 9000));
+// Código de retiro = últimas 4 cifras del número de pedido. Un solo número para todos:
+// el cliente lo ve en su celular, la cocina en el KDS y en Thinkion se encuentra el pedido
+// buscando esas 4 cifras. (Con Mercado Pago, el número de pedido es el número de pago.)
+function pickupCodeFor(orderId) {
+  const digits = String(orderId || "").replace(/\D/g, "");
+  return digits.length >= 4 ? digits.slice(-4) : "";
 }
 
 function buildThinkionOrder(o) {
   const disc = o.discount && o.discount.amount > 0 ? o.discount : null;
   // El nombre va primero en las notas para que se vea en el KDS (el de Thinkion y el propio)
   const notes = [`CLIENTE: ${cleanText(o.name || "Cliente", 60).toUpperCase()}`];
-  const code = String(o.code || "").replace(/\D/g, "").slice(0, 6);
+  const code = pickupCodeFor(o.orderId);
   if (code) notes.push(`RETIRO ${code}`);
   notes.push("RETIRA EN EL LOCAL");
   if (disc) notes.push(`CODIGO ${disc.code}`);
@@ -585,6 +588,6 @@ exports.applyDiscount = applyDiscount;
 exports.buildThinkionOrder = buildThinkionOrder;
 exports.sendToThinkion = sendToThinkion;
 exports.freeOrderId = freeOrderId;
-exports.pickupCode = pickupCode;
+exports.pickupCodeFor = pickupCodeFor;
 exports.customerIdFor = customerIdFor;
 exports.refreshPrices = refreshPrices;
