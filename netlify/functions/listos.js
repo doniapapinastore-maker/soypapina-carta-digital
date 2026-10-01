@@ -19,18 +19,25 @@
 //   VAPID_PUBLIC_KEY    clave pública de notificaciones
 //   VAPID_PRIVATE_KEY   clave privada de notificaciones
 //
-// Los datos se guardan en Netlify Blobs y se borran solos a las 3 horas.
+// Los datos se guardan en Netlify Blobs y se borran solos a las 2 horas.
 
 const { getStore, connectLambda } = require("@netlify/blobs");
 const webpush = require("web-push");
 
-const KEEP_MS = 3 * 60 * 60 * 1000;   // se guardan 3 horas
+const KEEP_MS = 2 * 60 * 60 * 1000;   // se guardan 2 horas
 const SALON_MS = 20 * 60 * 1000;
 const SALON_MAX = 12;
 
 const clean = (v, max) => String(v == null ? "" : v).replace(/\s+/g, " ").trim().slice(0, max);
 const normName = (n) => clean(n, 60).toUpperCase();
 const digits = (v, max) => String(v == null ? "" : v).replace(/\D/g, "").slice(0, max);
+// Identificador corto del celular (a partir de la dirección de su suscripción)
+function phoneId(endpoint) {
+  let h = 2166136261;
+  const t = String(endpoint || "");
+  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h.toString(36);
+}
 
 function reply(statusCode, obj, cacheSeconds) {
   const headers = { "Content-Type": "application/json" };
@@ -99,7 +106,7 @@ async function subsFor(store, entry) {
     const sub = await store.get(b.key, { type: "json" });
     if (!sub || !sub.subscription) continue;
     if (sub.name && entry.name && sub.name !== entry.name) continue;   // mismo código pero otro cliente
-    out.push({ key: b.key, sub });
+    out.push({ key: b.key, sub, phone: phoneId(sub.subscription.endpoint) });
   }
   return out;
 }
@@ -111,7 +118,10 @@ async function push(sub, payload) {
 async function sendPushes(store, entry) {
   if (!entry.code || !canPush()) return 0;
   let sent = 0;
-  for (const { key, sub } of await subsFor(store, entry)) {
+  const done = {}; // un solo aviso por celular, aunque haya anotaciones repetidas viejas
+  for (const { key, sub, phone } of await subsFor(store, entry)) {
+    if (done[phone]) { await store.delete(key); continue; }
+    done[phone] = true;
     if (entry.status === "reminder") {
       // Recordatorio: solo a quien recibió el "listo" y todavía no lo abrió
       if (!sub.notifiedAt || sub.ack) continue;
@@ -151,11 +161,25 @@ exports.handler = async (event) => {
         const okSub = sub && typeof sub.endpoint === "string" && /^https:\/\//.test(sub.endpoint) &&
           sub.endpoint.length < 1000 && sub.keys && sub.keys.p256dh && sub.keys.auth;
         if (!code || !okSub) return reply(400, { ok: false, error: "Datos incompletos" });
-        const rnd = Math.random().toString(36).slice(2, 7);
-        await store.setJSON(`s/${now}-${code}-${rnd}`, {
+        // Una sola anotación por celular y por pedido: si ya estaba, se reemplaza (no se suma otra)
+        const phone = phoneId(sub.endpoint);
+        let prev = null;
+        const { blobs } = await store.list({ prefix: "s/" });
+        for (const old of blobs) {
+          const m = /^s\/(\d+)-(\d+)-([a-z0-9]+)$/.exec(old.key);
+          if (!m || m[2] !== code) continue;
+          const o = await store.get(old.key, { type: "json" });
+          // mismo celular (también las anotaciones repetidas del formato anterior)
+          if (!o || !o.subscription || phoneId(o.subscription.endpoint) !== phone) continue;
+          if (!prev) prev = o;
+          await store.delete(old.key);
+        }
+        await store.setJSON(`s/${now}-${code}-${phone}`, {
           code,
           name: normName(b.name),
           since: Number(b.since) || now,
+          notifiedAt: prev && prev.notifiedAt ? prev.notifiedAt : undefined,
+          ack: prev && prev.ack ? true : undefined,
           subscription: { endpoint: sub.endpoint, keys: { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) } },
         });
         return reply(200, { ok: true });
