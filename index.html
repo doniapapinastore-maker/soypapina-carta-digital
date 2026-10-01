@@ -1155,13 +1155,15 @@ input, textarea { font-family: var(--f-body); }
   }
 
   // ───── aviso de "pedido listo" ─────
-  // Sigue hasta 5 pedidos a la vez (90 minutos cada uno).
+  // Sigue hasta 5 pedidos a la vez: mientras se preparan (tope 2 horas) y hasta 30 minutos
+  // después de listos o anulados. La lista se comparte entre todas las pestañas de la carta.
   // 1) Con la página abierta: pregunta cada 10 s y, cuando está listo, suena una alarma que se
   //    repite hasta que el cliente toca la pantalla.
   // 2) Con las notificaciones activadas: le llega una notificación al teléfono aunque cierre la
   //    página. Una vez activadas, los pedidos siguientes quedan activados solos.
   var WATCHES_KEY = 'dp-watches';
-  var WATCH_MS = 90 * 60 * 1000;
+  var WAIT_MS = 2 * 60 * 60 * 1000;  // esperando: tope de 2 horas
+  var DONE_MS = 30 * 60 * 1000;      // listo o anulado: se ve 30 minutos más
   var WATCH_MAX = 5;
   var watches = [], current = '', watchTimer = null, audioCtx = null, wakeLock = null, swReg = null, alarmTimer = null;
 
@@ -1176,19 +1178,40 @@ input, textarea { font-family: var(--f-body); }
   function pushSupported() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
   function pushGranted() { return pushSupported() && Notification.permission === 'granted'; }
 
+  function alive(w, now) {
+    if (!w || !w.code) return false;
+    return w.state === 'wait' ? now - w.since < WAIT_MS : now - (w.doneAt || w.since) < DONE_MS;
+  }
+
+  // Siempre se lee lo guardado: así todas las pestañas ven la misma lista y ninguna pisa a otra
+  function refresh() {
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(WATCHES_KEY) || '[]'); } catch (e) { list = []; }
+    var now = Date.now();
+    watches = (Array.isArray(list) ? list : []).filter(function (w) { return alive(w, now); });
+  }
+
+  // Cambia un pedido leyendo y guardando en el momento (sin pisar lo de otras pestañas)
+  function update(code, fn) {
+    refresh();
+    var w = findWatch(code);
+    if (w) { fn(w); saveWatches(); }
+    return w;
+  }
+
   function loadWatches() {
-    try {
-      var list = JSON.parse(localStorage.getItem(WATCHES_KEY) || '[]');
-      var old = JSON.parse(localStorage.getItem('dp-watch') || 'null'); // formato anterior (un solo pedido)
-      if (old && old.code) { list.push({ code: String(old.code), name: old.name, since: old.since, state: old.state || (old.ready ? 'ready' : 'wait'), push: !!old.push }); localStorage.removeItem('dp-watch'); }
-      var now = Date.now();
-      watches = (Array.isArray(list) ? list : []).filter(function (w) { return w && w.code && now - w.since < WATCH_MS; });
-    } catch (e) { watches = []; }
+    try { localStorage.removeItem('dp-watch'); } catch (e) {} // formato anterior
+    refresh();
     saveWatches();
   }
 
+  window.addEventListener('storage', function (e) {
+    if (e.key === WATCHES_KEY) { refresh(); paintWatch(); }
+  });
+
   function startWatch(w, inReceipt) {
     var code = String(w.code);
+    refresh();
     var x = findWatch(code);
     if (!x) {
       x = { code: code, name: normName(w.name), since: Number(w.since) || Date.now(), state: 'wait', push: false, noPush: '' };
@@ -1214,9 +1237,8 @@ input, textarea { font-family: var(--f-body); }
 
   function checkWatches() {
     clearTimeout(watchTimer);
-    var now = Date.now();
     var before = watches.length;
-    watches = watches.filter(function (w) { return now - w.since < WATCH_MS; });
+    refresh();
     if (watches.length !== before) { saveWatches(); paintWatch(); }
     var list = waiting();
     if (!list.length) { releaseAwake(); return; }
@@ -1227,21 +1249,25 @@ input, textarea { font-family: var(--f-body); }
           var mine = (d && d.ready || []).filter(function (x) {
             return x.at >= w.since - 60000 && (!x.name || normName(x.name) === w.name);
           });
-          if (!mine.length || w.state !== 'wait') return;
+          if (!mine.length) return;
           mine.sort(function (a, b) { return b.at - a.at; });
           setState(w, mine[0].status === 'cancelled' ? 'cancel' : 'ready');
         })
         .catch(function () { /* sin conexión: se vuelve a probar */ });
     })).then(function () {
+      paintWatch();
       if (waiting().length) watchTimer = setTimeout(checkWatches, 10000);
       else releaseAwake();
     });
   }
 
-  function setState(w, st) {
-    w.state = st;
-    saveWatches();
+  function setState(w0, st) {
+    var changed = false;
+    var w = update(w0.code, function (x) {
+      if (x.state === 'wait') { x.state = st; x.doneAt = Date.now(); changed = true; }
+    });
     paintWatch();
+    if (!w || !changed) return; // otra pestaña ya avisó
     try { if (navigator.vibrate) navigator.vibrate(st === 'ready' ? [600, 200, 600, 200, 600, 200, 1200] : [800, 300, 800]); } catch (e) {}
     startAlarm(st === 'ready');
     // Si lo está viendo en pantalla, no hace falta el recordatorio
@@ -1335,14 +1361,14 @@ input, textarea { font-family: var(--f-body); }
         body: JSON.stringify({ action: 'subscribe', code: w.code, name: w.name, since: w.since, subscription: sub.toJSON() })
       }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); });
     }).then(function () {
-      w.push = true;
-      saveWatches();
+      update(w.code, function (x) { x.push = true; });
       paintWatch();
     });
   }
 
   // El cliente toca "Activar notificaciones": se activa el sonido y se piden las notificaciones
   function enableAlerts() {
+    refresh();
     var w = findWatch(current);
     if (!w) return;
     try {
@@ -1352,29 +1378,33 @@ input, textarea { font-family: var(--f-body); }
     } catch (e) {}
     keepAwake();
     if (!pushSupported()) {
-      w.noPush = isIphoneBrowser()
+      var msg = isIphoneBrowser()
         ? 'Dejá esta pantalla abierta y te avisamos acá con sonido. (En iPhone, para recibir la notificación aunque cierres la página, agregá la carta a tu pantalla de inicio: Compartir → Agregar a inicio.)'
         : 'Dejá esta pantalla abierta y te avisamos acá con sonido.';
-      saveWatches(); paintWatch();
+      update(w.code, function (x) { x.noPush = msg; });
+      paintWatch();
       return;
     }
     $('rc-bell').disabled = true;
     $('rc-bell').textContent = 'Activando…';
     Notification.requestPermission().then(function (perm) {
       if (perm !== 'granted') throw new Error('sin permiso');
-      // Se activan todos los pedidos que estén esperando
+      // Se activan todos los pedidos que estén esperando y todavía no estén anotados
+      refresh();
       return Promise.all(waiting().filter(function (x) { return !x.push; }).map(subscribe));
     }).catch(function (err) {
-      w.noPush = String(err && err.message) === 'sin permiso'
+      var msg = String(err && err.message) === 'sin permiso'
         ? 'Sin notificaciones: dejá esta pantalla abierta y te avisamos acá con sonido.'
         : 'No se pudo activar la notificación: dejá esta pantalla abierta y te avisamos acá con sonido.';
-      saveWatches(); paintWatch();
+      update(w.code, function (x) { x.noPush = msg; });
+      paintWatch();
     });
   }
 
   function stateText(st) { return st === 'ready' ? '✅ Listo' : (st === 'cancel' ? '⚠️ Problema' : '🍳 Preparando'); }
 
   function paintWatch() {
+    refresh();
     var receiptOpen = !$('receipt').hidden;
     var w = findWatch(current);
     if (receiptOpen && w) {
