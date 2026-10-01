@@ -3,10 +3,14 @@
 // "Pedido listo": une el KDS de la cocina con el celular del cliente.
 //
 //  POST desde el KDS (header X-Server-Token = LISTOS_KEY):
-//     body { order, name, code, channel, status }   status: "ready" (listo) o "cancelled" (anulado)
+//     body { order, name, code, channel, status }
+//       status: "ready" (listo), "cancelled" (anulado) o "reminder" (recordatorio a los 3 minutos,
+//       solo si el cliente todavía no abrió el aviso)
 //     → se guarda, y si el cliente activó las notificaciones, se le manda una al teléfono.
 //  POST desde el celular { action: "subscribe", code, name, since, subscription }
 //     → el cliente pidió que le avisemos con una notificación.
+//  POST desde el celular { action: "ack", code, name }
+//     → el cliente ya vio el aviso de "listo" (no se le manda el recordatorio).
 //  GET ?code=4821 → el celular pregunta si SU pedido ya está listo (o si se anuló).
 //  GET (sin código) → últimos pedidos listos (no se usa en la dark kitchen, queda disponible).
 //
@@ -73,33 +77,60 @@ function canPush() {
   return pushReady;
 }
 
-async function sendPushes(store, entry) {
-  if (!entry.code || !canPush()) return 0;
+const VIBRATE = [600, 200, 600, 200, 600, 200, 1200];
+
+function payloadFor(entry, kind) {
+  if (kind === "reminder") {
+    return { title: "Tu pedido te espera 🍔", body: `Ya está listo para retirar en Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, url: "/" };
+  }
+  if (kind === "cancelled") {
+    return { title: "Hubo un problema con tu pedido", body: "Escribinos por WhatsApp y lo resolvemos.", tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, url: "/" };
+  }
+  return { title: "¡Tu pedido está listo! 🍔", body: `Pasá a retirarlo por Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, url: "/" };
+}
+
+// Suscripciones de este código y este cliente
+async function subsFor(store, entry) {
   const { blobs } = await store.list({ prefix: "s/" });
-  let sent = 0;
+  const out = [];
   for (const b of blobs) {
     const m = /^s\/(\d+)-(\d+)-/.exec(b.key);
     if (!m || m[2] !== entry.code) continue;
     const sub = await store.get(b.key, { type: "json" });
     if (!sub || !sub.subscription) continue;
     if (sub.name && entry.name && sub.name !== entry.name) continue;   // mismo código pero otro cliente
-    if (sub.since && entry.at < sub.since - 60000) continue;          // aviso anterior a su pedido
-    const ready = entry.status !== "cancelled";
-    const payload = JSON.stringify({
-      title: ready ? "¡Tu pedido está listo! 🍔" : "Hubo un problema con tu pedido",
-      body: ready
-        ? `Pasá a retirarlo por Doña Papina. Tu código: ${entry.code}`
-        : "Escribinos por WhatsApp y lo resolvemos.",
-      tag: `pedido-${entry.code}`,
-      url: "/",
-    });
+    out.push({ key: b.key, sub });
+  }
+  return out;
+}
+
+async function push(sub, payload) {
+  await webpush.sendNotification(sub.subscription, JSON.stringify(Object.assign({ vibrate: VIBRATE }, payload)), { TTL: 3600, urgency: "high" });
+}
+
+async function sendPushes(store, entry) {
+  if (!entry.code || !canPush()) return 0;
+  let sent = 0;
+  for (const { key, sub } of await subsFor(store, entry)) {
+    if (entry.status === "reminder") {
+      // Recordatorio: solo a quien recibió el "listo" y todavía no lo abrió
+      if (!sub.notifiedAt || sub.ack) continue;
+      try { await push(sub, payloadFor(entry, "reminder")); sent++; } catch (err) { console.warn("Recordatorio:", err && (err.statusCode || err.message)); }
+      await store.delete(key);
+      continue;
+    }
+    if (sub.since && entry.at < sub.since - 60000) continue;           // aviso anterior a su pedido
+    if (sub.notifiedAt) continue;                                       // ya avisado
     try {
-      await webpush.sendNotification(sub.subscription, payload, { TTL: 3600, urgency: "high" });
+      await push(sub, payloadFor(entry, entry.status));
       sent++;
     } catch (err) {
       console.warn("No se pudo mandar la notificación:", err && (err.statusCode || err.message));
+      await store.delete(key);
+      continue;
     }
-    await store.delete(b.key); // cada suscripción avisa una sola vez
+    if (entry.status === "cancelled") await store.delete(key);
+    else await store.setJSON(key, Object.assign({}, sub, { notifiedAt: entry.at })); // queda para el recordatorio
   }
   return sent;
 }
@@ -130,6 +161,16 @@ exports.handler = async (event) => {
         return reply(200, { ok: true });
       }
 
+      // ───── El celular avisa que el cliente ya vio el "listo" ─────
+      if (b.action === "ack") {
+        const entry = { code: digits(b.code, 6), name: normName(b.name) };
+        if (!entry.code) return reply(400, { ok: false });
+        for (const { key, sub } of await subsFor(store, entry)) {
+          if (sub.notifiedAt || b.final) await store.setJSON(key, Object.assign({}, sub, { ack: true }));
+        }
+        return reply(200, { ok: true });
+      }
+
       // ───── El KDS avisa que un pedido está listo o anulado ─────
       const key = process.env.LISTOS_KEY;
       const sent = (event.headers && (event.headers["x-server-token"] || event.headers["X-Server-Token"])) || "";
@@ -140,14 +181,14 @@ exports.handler = async (event) => {
         name: normName(b.name),
         code: digits(b.code, 6),
         channel: clean(b.channel, 30),
-        status: b.status === "cancelled" ? "cancelled" : "ready",
+        status: b.status === "cancelled" ? "cancelled" : (b.status === "reminder" ? "reminder" : "ready"),
         at: now,
       };
       if (!entry.order && !entry.code) return reply(400, { ok: false, error: "Falta el pedido" });
 
       const rnd = Math.random().toString(36).slice(2, 7);
       if (entry.status === "ready") await store.setJSON(`r/${now}-${rnd}`, entry);
-      if (entry.code) await store.setJSON(`c/${now}-${entry.code}`, entry);
+      if (entry.code && entry.status !== "reminder") await store.setJSON(`c/${now}-${entry.code}`, entry);
       let pushes = 0;
       try { pushes = await sendPushes(store, entry); } catch (e) { console.warn("Notificaciones:", e && e.message); }
       try { await prune(store, now); } catch (e) { console.warn("No se pudo limpiar:", e && e.message); }
