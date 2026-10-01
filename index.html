@@ -278,7 +278,7 @@ input, textarea { font-family: var(--f-body); }
 .rc-title .rc-ok { width: 34px; height: 34px; font-size: 18px; }
 .rc-hero { width: 100%; border-radius: 16px; padding: 16px 14px; background: #fff; border: 3px solid var(--gold); display: flex; flex-direction: column; gap: 10px; text-align: left; }
 .rc-hero-top { display: flex; align-items: center; gap: 10px; }
-.rc-hero-top b { font-family: var(--f-display); font-weight: 400; font-size: clamp(14px, 4.4vw, 19px); line-height: 1.15; white-space: nowrap; }
+.rc-hero-top b { font-family: var(--f-display); font-weight: 400; font-size: clamp(13px, 4vw, 19px); line-height: 1.15; white-space: nowrap; }
 .rc-hero p { margin: 0; font-size: 14px !important; font-weight: 700; color: var(--red) !important; line-height: 1.3; }
 .rc-dot { flex: 0 0 auto; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 0 rgba(243, 208, 138, 0.9); animation: rc-pulse 1.6s ease-out infinite; }
 @keyframes rc-pulse { to { box-shadow: 0 0 0 12px rgba(243, 208, 138, 0); } }
@@ -309,6 +309,7 @@ input, textarea { font-family: var(--f-body); }
 .od.bad summary span { color: var(--red); }
 .od-items { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; text-align: left; }
 .od-items .rc-item b { font-size: 13px; }
+.od-n { display: block; font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: var(--brown); margin: 4px 0 2px; }
 .od-tot { display: flex; justify-content: space-between; border-top: 1px dashed rgba(150, 96, 58, 0.4); padding-top: 5px; font-weight: 700; }
 .orders-sheet { position: fixed; inset: 0; z-index: 400; background: rgba(51, 32, 15, 0.55); display: flex; align-items: flex-start; justify-content: center; padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px 12px; overflow-y: auto; }
 .os-box { width: 100%; max-width: 440px; background: var(--paper); border: 2px solid var(--brown); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
@@ -317,6 +318,11 @@ input, textarea { font-family: var(--f-body); }
 .os-x { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--ink); color: var(--cream); font-size: 15px; cursor: pointer; }
 .os-list { display: flex; flex-direction: column; gap: 8px; }
 .os-note { margin: 0; font-size: 12px; color: var(--brown); text-align: center; }
+.rc-hero p.rc-eta { margin: 0; font-size: 14px !important; font-weight: 800; color: var(--ink) !important; }
+.rc-hero p.rc-eta b { color: var(--red); }
+.rc-hero p.rc-group { margin: 0; font-size: 12.5px !important; font-weight: 700; color: var(--brown) !important; }
+.paused-bar { position: sticky; top: 0; z-index: 140; background: var(--red); color: var(--on-red); text-align: center; font-weight: 800; font-size: 15px; padding: 12px 14px; line-height: 1.3; }
+body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: none; }
 .rc-save { width: 100%; display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--brown); }
 .rc-save span { flex: 1 1 auto; text-align: left; }
 .rc-save a, .rc-save button { flex: 0 0 auto; min-height: 38px; padding: 0 12px; border-radius: 10px; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; }
@@ -532,7 +538,7 @@ input, textarea { font-family: var(--f-body); }
 
         <label class="lbl">
           <span>OBSERVACIONES GENERALES</span>
-          <textarea class="textarea" id="notes" rows="3" maxlength="300" placeholder="Alergias, cocción, o algo para todo el pedido (lo de cada hamburguesa lo marcás al armarla)"></textarea>
+          <textarea class="textarea" id="notes" rows="3" maxlength="300" placeholder="Alergias, cocción, o algo para todo el pedido (lo de cada producto lo marcás al armarla)"></textarea>
         </label>
       </div>
 
@@ -609,6 +615,8 @@ input, textarea { font-family: var(--f-body); }
     <div class="rc-hero" id="rc-hero" data-state="wait" role="status" aria-live="polite" hidden>
       <div class="rc-hero-top"><span class="rc-dot" aria-hidden="true"></span><b id="rc-hero-t">🍳 Preparando tu pedido</b></div>
       <div class="rc-code"><small>TU CÓDIGO<br>DE RETIRO</small><b id="rc-code">—</b></div>
+      <p class="rc-eta" id="rc-eta" hidden></p>
+      <p class="rc-group" id="rc-group" hidden></p>
       <p id="rc-hero-s"></p>
       <button class="rc-bell" type="button" id="rc-bell">🔔 Activar notificaciones</button>
       <p class="rc-bell-note" id="rc-bell-note" hidden></p>
@@ -854,7 +862,7 @@ input, textarea { font-family: var(--f-body); }
     var chips = h('div', { class: 'tiles', role: 'group', 'aria-labelledby': 'h-notes' }, NOTE_CHIPS.map(function (t) {
       return h('button', { type: 'button', class: 'tile check note', role: 'checkbox', 'aria-checked': 'false', 'data-chip': t }, [h('span', { class: 'mark' }), h('span', { text: t })]);
     }));
-    var txt = h('input', { class: 'field', type: 'text', id: 'sheet-text', maxlength: '80', autocomplete: 'off', placeholder: 'Otra aclaración para esta hamburguesa', 'aria-label': 'Otra aclaración para esta hamburguesa' });
+    var txt = h('input', { class: 'field', type: 'text', id: 'sheet-text', maxlength: '80', autocomplete: 'off', placeholder: 'Otra aclaración para este producto', 'aria-label': 'Otra aclaración para esta hamburguesa' });
     box.appendChild(h('section', { class: 'opt', 'data-opt': 'notes' }, [
       h('div', { class: 'opt-head' }, [h('h4', { id: 'h-notes', text: 'Aclaraciones' }), h('span', { class: 'tag soft', text: 'Opcional' })]),
       chips, txt
@@ -1040,7 +1048,8 @@ input, textarea { font-family: var(--f-body); }
   }
   function pay() {
     if (state.paying) return;
-    if (!state.lines.length || !state.menu) { toast('Elegí al menos una hamburguesa para poder pagar.'); return; }
+    if (state.paused) { toast('Por el momento no estamos tomando pedidos online.'); return; }
+    if (!state.lines.length || !state.menu) { toast('Elegí al menos un producto para poder pagar.'); return; }
     setPayError('');
     var name = $('name').value.trim(), okName = !!name, okPick = $('pickup').checked;
     fieldError('name', !okName); fieldError('pickup', !okPick);
@@ -1060,6 +1069,9 @@ input, textarea { font-family: var(--f-body); }
       })
     };
     if (state.coupon) payload.coupon = state.coupon.code;
+    // ¿Tiene otro pedido en preparación de los últimos 30 minutos, a su nombre? Entonces van juntos.
+    var group = groupCandidate(name);
+    if (group) payload.group_with = group.code;
     setPaying(true);
     fetch(PAY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
@@ -1069,7 +1081,7 @@ input, textarea { font-family: var(--f-body); }
           var d = res.d;
           var pending = {
             name: name, notes: notes, total: d.total, subtotal: d.subtotal != null ? d.subtotal : total(),
-            code: d.pickup_code || '', orderedAt: Date.now(),
+            code: d.pickup_code || (group ? group.code : ''), grouped: !!(d.grouped || group), orderedAt: Date.now(),
             discount: state.coupon && d.discount > 0 ? { name: state.coupon.name, amount: d.discount, code: state.coupon.code } : null,
             items: state.lines.map(function (l) { var t = describeText(l); return { name: ALL[l.key].name, detail: t.detail, drink: t.drink, note: t.note }; })
           };
@@ -1079,7 +1091,8 @@ input, textarea { font-family: var(--f-body); }
           return;
         }
         if (res.d && res.d.coupon_invalid) { state.coupon = null; state.couponOpen = false; paintCoupon(); }
-        var msg = (res.status === 400 || res.status === 502) && res.d && res.d.error ? res.d.error : 'No se pudo iniciar el pago. Probá de nuevo en unos segundos.';
+        if (res.status === 503 && res.d && res.d.paused) setPaused(true);
+        var msg = (res.status === 400 || res.status === 502 || res.status === 503) && res.d && res.d.error ? res.d.error : 'No se pudo iniciar el pago. Probá de nuevo en unos segundos.';
         var fe = new Error(msg); fe.friendly = true;
         throw fe;
       })
@@ -1172,8 +1185,9 @@ input, textarea { font-family: var(--f-body); }
     $('receipt').hidden = false;
     document.body.style.overflow = 'hidden';
     if (code) startWatch({
-      code: code, name: name, since: (pending && pending.orderedAt) || Date.now(),
+      code: code, name: name, since: (pending && pending.orderedAt) || Date.now(), grouped: !!(pending && pending.grouped),
       detail: {
+        at: (pending && pending.orderedAt) || Date.now(),
         time: dateStr,
         items: items.map(function (i) { return { name: i.name, detail: i.detail || '', drink: i.drink || '', note: i.note || '' }; }),
         notes: notes, total: tot, discount: disc ? disc.name : ''
@@ -1250,9 +1264,18 @@ input, textarea { font-family: var(--f-body); }
     refresh();
     var x = findWatch(code);
     if (!x) {
-      x = { code: code, name: normName(w.name), since: Number(w.since) || Date.now(), state: 'wait', push: false, noPush: '', detail: w.detail || null };
+      x = { code: code, name: normName(w.name), since: Number(w.since) || Date.now(), state: 'wait', push: false, noPush: '',
+        count: 1, orders: w.detail ? [w.detail] : [] };
       watches.push(x);
       while (watches.length > WATCH_MAX) watches.shift();
+    } else if (w.grouped && w.detail && inReceipt) {
+      // Segundo pedido que va junto: se suma al mismo código (si no se había sumado ya, por ejemplo al recargar)
+      var seen = (x.orders || []).map(function (o) { return String(o.at || o.time); });
+      if (seen.indexOf(String(w.detail.at || w.detail.time)) === -1) {
+        x.orders = (x.orders || (x.detail ? [x.detail] : [])).concat([w.detail]);
+        x.count = x.orders.length;
+        x.pillHidden = '';
+      }
     }
     if (inReceipt) current = code;
     saveWatches();
@@ -1262,6 +1285,33 @@ input, textarea { font-family: var(--f-body); }
     if (waiting().length) { keepAwake(); checkWatches(); }
   }
 
+
+  // ───── pausa de pedidos web (la maneja la cocina desde el KDS) ─────
+  function setPaused(on) {
+    state.paused = !!on;
+    document.body.classList.toggle('is-paused', state.paused);
+    var bar = document.querySelector('.paused-bar');
+    if (state.paused && !bar) {
+      bar = h('div', { class: 'paused-bar', role: 'alert', text: '⏸ Por el momento no estamos tomando pedidos online. Volvé a intentar en un rato.' });
+      document.body.insertBefore(bar, document.body.firstChild);
+    } else if (!state.paused && bar) bar.remove();
+  }
+  function checkPaused() {
+    fetch(LISTOS_URL + '?estado=1', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { setPaused(d && d.paused); })
+      .catch(function () {})
+      .then(function () { setTimeout(checkPaused, 60000); });
+  }
+
+  function groupCandidate(name) {
+    refresh();
+    var now = Date.now(), n = normName(name), best = null;
+    watches.forEach(function (w) {
+      if (w.state === 'wait' && now - w.since < 30 * 60 * 1000 && w.name === n && (!best || w.since > best.since)) best = w;
+    });
+    return best;
+  }
 
   function checkWatches() {
     clearTimeout(watchTimer);
@@ -1274,6 +1324,8 @@ input, textarea { font-family: var(--f-body); }
       return fetch(LISTOS_URL + '?code=' + encodeURIComponent(w.code), { cache: 'no-store' })
         .then(function (r) { return r.json(); })
         .then(function (d) {
+          var eta = (d && d.eta || []).filter(function (x) { return !x.name || normName(x.name) === w.name; })[0];
+          if (eta && eta.eta && eta.eta !== w.eta) { update(w.code, function (y) { y.eta = eta.eta; }); }
           var mine = (d && d.ready || []).filter(function (x) {
             return x.at >= w.since - 60000 && (!x.name || normName(x.name) === w.name);
           });
@@ -1294,7 +1346,7 @@ input, textarea { font-family: var(--f-body); }
     var w = update(w0.code, function (x) {
       if (x.state === 'wait') { x.state = st; x.doneAt = Date.now(); changed = true; }
     });
-    if (changed) setMinimized(false);
+    if (changed) update(w0.code, function (x) { if (x.pillHidden === 'wait') x.pillHidden = 'shown-ready'; });
     paintWatch();
     if (!w || !changed) return; // otra pestaña ya avisó
     try { if (navigator.vibrate) navigator.vibrate(st === 'ready' ? [600, 200, 600, 200, 600, 200, 1200] : [800, 300, 800]); } catch (e) {}
@@ -1430,13 +1482,34 @@ input, textarea { font-family: var(--f-body); }
     });
   }
 
-  // Cartel achicado (se guarda por pestaña; si un pedido pasa a listo, se vuelve a mostrar grande)
-  function isMinimized() { try { return sessionStorage.getItem('dp-watch-min') === '1'; } catch (e) { return false; } }
-  function setMinimized(v) { try { if (v) sessionStorage.setItem('dp-watch-min', '1'); else sessionStorage.removeItem('dp-watch-min'); } catch (e) {} }
+  // Cartel de arriba: si se cierra mientras se prepara, vuelve UNA vez cuando está listo;
+  // si se cierra cuando ya está listo, no vuelve. El comprobante y la notificación siguen igual.
+  function pillVisible(w) {
+    if (w.pillHidden === 'done') return false;
+    if (w.pillHidden === 'wait') return w.state !== 'wait';
+    return true;
+  }
+  function closePill() {
+    refresh();
+    watches.forEach(function (w) {
+      if (!pillVisible(w)) return;
+      w.pillHidden = w.state === 'wait' ? 'wait' : 'done';
+    });
+    saveWatches();
+    paintWatch();
+  }
 
   // Detalle de un pedido guardado (productos, total) para poder revisarlo después
   function detailNode(x) {
-    var d = x.detail;
+    var orders = x.orders || (x.detail ? [x.detail] : []);
+    if (!orders.length) return h('div', { class: 'od-items' }, [h('div', { text: 'Sin detalle guardado.' })]);
+    if (orders.length === 1) return orderDetail(orders[0]);
+    return h('div', { class: 'od-items' }, orders.map(function (d, k) {
+      return h('div', {}, [h('small', { class: 'od-n', text: 'PEDIDO ' + (k + 1) + ' · ' + (d.time || '').split(' ').pop() }), orderDetail(d)]);
+    }));
+  }
+
+  function orderDetail(d) {
     if (!d || !d.items) return h('div', { class: 'od-items' }, [h('div', { text: 'Sin detalle guardado.' })]);
     var kids = d.items.map(function (i) {
       return h('div', { class: 'rc-item' }, [
@@ -1454,7 +1527,7 @@ input, textarea { font-family: var(--f-body); }
   function orderCard(x, open) {
     var cls = x.state === 'ready' ? 'ok' : (x.state === 'cancel' ? 'bad' : '');
     var det = h('details', { class: 'od ' + cls }, [
-      h('summary', {}, [h('b', { text: x.code }), h('span', { text: (x.detail && x.detail.time ? x.detail.time.split(' ')[1] + ' · ' : '') + stateText(x.state) })]),
+      h('summary', {}, [h('b', { text: x.code + (x.count > 1 ? ' · ' + x.count + ' pedidos' : '') }), h('span', { text: stateText(x.state) })]),
       detailNode(x)
     ]);
     if (open) det.open = true;
@@ -1486,12 +1559,20 @@ input, textarea { font-family: var(--f-body); }
     if (receiptOpen && w) {
       var st = w.state;
       $('rc-hero').setAttribute('data-state', st);
-      $('rc-hero-t').textContent = st === 'ready' ? '✅ ¡Tu pedido está listo!' : (st === 'cancel' ? '⚠️ Problema con tu pedido' : '🍳 Preparando tu pedido');
+      var many = (w.count || 1) > 1;
+      $('rc-hero-t').textContent = st === 'ready' ? (many ? '✅ ¡Tus ' + w.count + ' pedidos están listos!' : '✅ ¡Tu pedido está listo!')
+        : (st === 'cancel' ? '⚠️ Problema con tu pedido' : (many ? '🍳 Preparando tus ' + w.count + ' pedidos' : '🍳 Preparando tu pedido'));
+      var etaEl = $('rc-eta');
+      etaEl.hidden = !(st === 'wait' && w.eta);
+      if (st === 'wait' && w.eta) { var de = new Date(w.eta); etaEl.innerHTML = '⏱ Listo aprox. a las <b>' + ('0' + de.getHours()).slice(-2) + ':' + ('0' + de.getMinutes()).slice(-2) + '</b>'; }
+      var grp = $('rc-group');
+      grp.hidden = !many;
+      if (many) grp.textContent = '🔗 Van juntos: retirás los ' + w.count + ' pedidos con el mismo código.';
       var sub = $('rc-hero-s');
       var invite = st === 'wait' && !w.push && !w.noPush;
       sub.classList.toggle('is-invite', invite);
       sub.classList.toggle('is-ok', st === 'wait' && w.push);
-      if (st === 'ready') sub.textContent = 'Pasá a retirarlo. Mostrá tu código al llegar.';
+      if (st === 'ready') sub.textContent = many ? 'Pasá a retirarlos. Mostrá tu código al llegar.' : 'Pasá a retirarlo. Mostrá tu código al llegar.';
       else if (st === 'cancel') sub.textContent = 'Escribinos por WhatsApp y lo resolvemos.';
       else if (w.push) sub.innerHTML = '✅ <b>Notificaciones activadas.</b> Te avisamos cuando esté listo, ya podés cerrar la página.';
       else if (w.noPush) sub.textContent = w.noPush;
@@ -1513,40 +1594,28 @@ input, textarea { font-family: var(--f-body); }
         others.forEach(function (x) { box.appendChild(orderCard(x, false)); });
       }
     }
-    // Cartelito arriba cuando el comprobante está cerrado. La ✕ solo lo achica (no borra nada).
+    // Cartelito arriba cuando el comprobante está cerrado
     var pill = document.querySelector('.watch-pill');
-    var mini = document.querySelector('.watch-min');
-    if (receiptOpen || !watches.length) { if (pill) pill.remove(); if (mini) mini.remove(); return; }
-    var anyReady = watches.some(function (x) { return x.state === 'ready'; });
-    var anyCancel = watches.some(function (x) { return x.state === 'cancel'; });
-    if (isMinimized()) {
-      if (pill) pill.remove();
-      if (!mini) {
-        mini = h('button', { class: 'watch-min', type: 'button', 'aria-label': 'Ver mis pedidos' });
-        mini.addEventListener('click', function () { setMinimized(false); paintWatch(); });
-        document.body.appendChild(mini);
-      }
-      mini.classList.toggle('is-ready', anyReady && !anyCancel);
-      mini.classList.toggle('is-cancel', anyCancel);
-      mini.textContent = (anyCancel ? '⚠️' : (anyReady ? '✅' : '🍳')) + ' ' + watches.length;
-      return;
-    }
-    if (mini) mini.remove();
+    var mini = document.querySelector('.watch-min'); if (mini) mini.remove();
+    var shown = watches.filter(pillVisible);
+    if (receiptOpen || !shown.length) { if (pill) pill.remove(); return; }
+    var anyReady = shown.some(function (x) { return x.state === 'ready'; });
+    var anyCancel = shown.some(function (x) { return x.state === 'cancel'; });
     if (!pill) {
-      pill = h('div', { class: 'watch-pill', role: 'status' }, [h('span', { class: 'wp-t' }), h('button', { type: 'button', 'aria-label': 'Achicar', text: '✕' })]);
-      pill.querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); setMinimized(true); paintWatch(); });
+      pill = h('div', { class: 'watch-pill', role: 'status' }, [h('span', { class: 'wp-t' }), h('button', { type: 'button', 'aria-label': 'Cerrar', text: '✕' })]);
+      pill.querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); closePill(); });
       pill.querySelector('.wp-t').addEventListener('click', openOrders);
       document.body.appendChild(pill);
     }
     pill.classList.toggle('is-ready', anyReady && !anyCancel);
     pill.classList.toggle('is-cancel', anyCancel);
     var text;
-    if (watches.length === 1) {
-      var x = watches[0];
-      text = x.state === 'ready' ? '✅ Pedido ' + x.code + ': ¡listo para retirar!'
-        : (x.state === 'cancel' ? '⚠️ Pedido ' + x.code + ': escribinos por WhatsApp' : '🍳 Pedido ' + x.code + ': preparándose…');
+    if (shown.length === 1) {
+      var x = shown[0], pl = (x.count || 1) > 1;
+      text = x.state === 'ready' ? '✅ ' + (pl ? 'Pedidos ' : 'Pedido ') + x.code + ': ¡' + (pl ? 'listos' : 'listo') + ' para retirar!'
+        : (x.state === 'cancel' ? '⚠️ Pedido ' + x.code + ': escribinos por WhatsApp' : '🍳 ' + (pl ? 'Pedidos ' : 'Pedido ') + x.code + ': preparándose…');
     } else {
-      text = watches.map(function (y) { return y.code + ' ' + stateText(y.state); }).join(' · ');
+      text = shown.map(function (y) { return y.code + ' ' + stateText(y.state); }).join(' · ');
     }
     pill.querySelector('.wp-t').textContent = text + '  ›';
   }
@@ -1587,6 +1656,7 @@ input, textarea { font-family: var(--f-body); }
     var pid = new URLSearchParams(window.location.search).get('payment_id') || new URLSearchParams(window.location.search).get('collection_id') || '';
     // Pedidos que este celular sigue esperando (cartelito abajo)
     loadWatches();
+    checkPaused();
     if (status !== 'exito' && watches.length) { paintWatch(); checkWatches(); }
     if (status === 'exito') showReceipt(pid);
     else if (status === 'fallo') notice('El pago no se pudo completar. Podés intentar de nuevo.');
