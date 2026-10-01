@@ -272,6 +272,22 @@ input, textarea { font-family: var(--f-body); }
 }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
+/* ───────── Aviso de pedido listo ───────── */
+.rc-ready { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.rc-code { width: 100%; background: var(--ink); color: var(--cream); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rc-code small { font-weight: 700; font-size: 11px; letter-spacing: 0.6px; text-align: left; }
+.rc-code b { font-family: var(--f-display); font-weight: 400; font-size: 30px; letter-spacing: 3px; color: var(--gold); }
+.rc-status { width: 100%; display: flex; align-items: center; gap: 10px; border: 2px solid var(--brown); border-radius: 12px; padding: 10px 12px; background: #fff; font-weight: 700; font-size: 14px; text-align: left; line-height: 1.3; }
+.rc-dot { flex: 0 0 auto; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 0 rgba(243, 208, 138, 0.8); animation: rc-pulse 1.6s ease-out infinite; }
+@keyframes rc-pulse { to { box-shadow: 0 0 0 10px rgba(243, 208, 138, 0); } }
+.rc-status.is-ready { background: var(--green); border-color: var(--green); color: var(--cream); font-size: 16px; animation: rc-pop 0.5s ease-out; }
+.rc-status.is-ready .rc-dot { background: var(--cream); animation: none; }
+@keyframes rc-pop { 0% { transform: scale(0.94); } 60% { transform: scale(1.04); } 100% { transform: none; } }
+.rc-keep { font-size: 12px !important; color: var(--brown) !important; }
+.watch-pill { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 150; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px); padding: 10px 14px; border-radius: 999px; background: var(--ink); color: var(--cream); font-weight: 700; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); border: 0; cursor: pointer; }
+.watch-pill.is-ready { background: var(--green); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .rc-dot, .rc-status.is-ready { animation: none; } }
+
 /* ───────── Comprobante ───────── */
 .receipt { position: fixed; inset: 0; z-index: 200; background: var(--cream); display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
 .rc { width: 100%; max-width: 400px; background: var(--paper); border: 2px solid var(--brown); border-radius: 18px; padding: 24px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; box-shadow: 4px 4px 0 rgba(150, 96, 58, 0.25); text-align: center; margin: auto 0; }
@@ -535,6 +551,11 @@ input, textarea { font-family: var(--f-body); }
     <h2 id="rc-title">¡Pago aprobado!</h2>
     <p>Tu pedido ya está en camino a la cocina.</p>
     <div class="rc-pick">📍 Retirá tu pedido en el local. No hacemos envíos.</div>
+    <div class="rc-ready" id="rc-ready" hidden>
+      <div class="rc-code"><small>TU CÓDIGO<br>DE RETIRO</small><b id="rc-code">—</b></div>
+      <div class="rc-status" id="rc-status" role="status" aria-live="polite"><span class="rc-dot" aria-hidden="true"></span><span id="rc-status-t">Tu pedido se está preparando…</span></div>
+      <p class="rc-keep">Dejá esta pantalla abierta: te avisamos acá cuando esté listo.</p>
+    </div>
     <div class="rc-box">
       <div class="rc-meta"><b id="rc-name"></b><span id="rc-date"></span></div>
       <div class="rc-items" id="rc-items"></div>
@@ -557,6 +578,7 @@ input, textarea { font-family: var(--f-body); }
   var WHATSAPP = '5491152592831';
   var MENU_URL = '/.netlify/functions/menu';
   var PAY_URL = '/.netlify/functions/create-preference';
+  var LISTOS_URL = '/.netlify/functions/listos';
   var COUPON_URL = '/.netlify/functions/coupon';
 
   // Lo que se ve de cada producto (fotos, textos). Los PRECIOS y las OPCIONES vienen del servidor (menu.js).
@@ -976,6 +998,7 @@ input, textarea { font-family: var(--f-body); }
           var d = res.d;
           var pending = {
             name: name, notes: notes, total: d.total, subtotal: d.subtotal != null ? d.subtotal : total(),
+            code: d.pickup_code || '', orderedAt: Date.now(),
             discount: state.coupon && d.discount > 0 ? { name: state.coupon.name, amount: d.discount, code: state.coupon.code } : null,
             items: state.lines.map(function (l) { var t = describeText(l); return { name: ALL[l.key].name, detail: t.detail, drink: t.drink, note: t.note }; })
           };
@@ -1038,7 +1061,13 @@ input, textarea { font-family: var(--f-body); }
     $('rc-total').textContent = tot != null ? money(tot) : '—';
     $('rc-id').textContent = refId || 'Sin ID — avisanos igual por WhatsApp';
 
-    var lines = ['🧾 COMPROBANTE DE PEDIDO — Doña Papina', '👤 ' + name, '🕐 ' + dateStr, '📍 Retira en el local', ''];
+    var code = (pending && pending.code) || '';
+    $('rc-ready').hidden = !code;
+    if (code) $('rc-code').textContent = code;
+
+    var lines = ['🧾 COMPROBANTE DE PEDIDO — Doña Papina', '👤 ' + name, '🕐 ' + dateStr, '📍 Retira en el local'];
+    if (code) lines.push('🔢 Código de retiro: ' + code);
+    lines.push('');
     items.forEach(function (i) {
       lines.push('1 × ' + i.name);
       if (i.detail) lines.push('   ' + i.detail);
@@ -1062,10 +1091,108 @@ input, textarea { font-family: var(--f-body); }
       else window.prompt('Copiá el texto:', text);
     };
     $('rc-again').onclick = function () { window.location.href = window.location.pathname; };
+    // (el seguimiento queda guardado y se muestra como cartelito al volver a la carta)
     $('receipt').hidden = false;
     document.body.style.overflow = 'hidden';
+    if (code) startWatch({ code: code, name: name, since: (pending && pending.orderedAt) || Date.now() }, true);
     $('rc-again').focus();
   }
+
+  // ───── aviso de "pedido listo" ─────
+  // El celular pregunta cada 10 s si la cocina ya marcó el pedido como listo en el KDS.
+  var WATCH_KEY = 'dp-watch';
+  var WATCH_MS = 3 * 60 * 60 * 1000; // se deja de preguntar a las 3 horas
+  var watch = null, watchTimer = null;
+
+  function normName(n) { return String(n || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
+
+  function startWatch(w, inReceipt) {
+    watch = { code: String(w.code), name: normName(w.name), since: Number(w.since) || Date.now(), ready: !!w.ready, inReceipt: !!inReceipt };
+    try { localStorage.setItem(WATCH_KEY, JSON.stringify(watch)); } catch (e) {}
+    paintWatch();
+    if (!watch.ready) checkWatch();
+  }
+
+  function stopWatch() {
+    clearTimeout(watchTimer);
+    watch = null;
+    try { localStorage.removeItem(WATCH_KEY); } catch (e) {}
+    var pill = document.querySelector('.watch-pill'); if (pill) pill.remove();
+  }
+
+  function checkWatch() {
+    clearTimeout(watchTimer);
+    if (!watch || watch.ready) return;
+    if (Date.now() - watch.since > WATCH_MS) { stopWatch(); return; }
+    fetch(LISTOS_URL + '?code=' + encodeURIComponent(watch.code), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!watch) return;
+        var ok = (d && d.ready || []).some(function (x) {
+          return x.at >= watch.since - 60000 && (!x.name || normName(x.name) === watch.name);
+        });
+        if (ok) setReady();
+      })
+      .catch(function () { /* sin conexión: se vuelve a probar */ })
+      .then(function () { if (watch && !watch.ready) watchTimer = setTimeout(checkWatch, 10000); });
+  }
+
+  function setReady() {
+    watch.ready = true;
+    try { localStorage.setItem(WATCH_KEY, JSON.stringify(watch)); } catch (e) {}
+    paintWatch();
+    try { if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 500]); } catch (e) {}
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        var ctx = new Ctx();
+        [0, 0.25, 0.5].forEach(function (t, i) {
+          var o = ctx.createOscillator(), g = ctx.createGain();
+          o.frequency.value = [880, 1175, 1568][i];
+          g.gain.setValueAtTime(0.0001, ctx.currentTime + t);
+          g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.35);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.4);
+        });
+      }
+    } catch (e) {}
+    var base = document.title, n = 0;
+    var flash = setInterval(function () {
+      document.title = (n++ % 2) ? base : '✅ ¡Tu pedido está listo!';
+      if (n > 12) { clearInterval(flash); document.title = base; }
+    }, 1000);
+  }
+
+  function paintWatch() {
+    if (!watch) return;
+    var st = $('rc-status');
+    if (st && !$('receipt').hidden) {
+      st.classList.toggle('is-ready', watch.ready);
+      $('rc-status-t').textContent = watch.ready
+        ? '¡Tu pedido está listo! Pasá a retirarlo 🍔'
+        : 'Tu pedido se está preparando…';
+    }
+    // Cartelito abajo si el cliente cerró el comprobante o volvió a abrir la carta
+    var pill = document.querySelector('.watch-pill');
+    if ($('receipt').hidden) {
+      if (!pill) {
+        pill = h('button', { class: 'watch-pill', type: 'button' });
+        pill.addEventListener('click', function () { if (watch && watch.ready) stopWatch(); });
+        document.body.appendChild(pill);
+      }
+      pill.classList.toggle('is-ready', watch.ready);
+      pill.textContent = watch.ready
+        ? '✅ Pedido ' + watch.code + ': ¡listo para retirar! (tocá para cerrar)'
+        : '🍳 Pedido ' + watch.code + ': preparándose…';
+    } else if (pill) {
+      pill.remove();
+    }
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && watch && !watch.ready) checkWatch();
+  });
 
   // ───── avisos ─────
   var toastTimer = null;
@@ -1093,6 +1220,14 @@ input, textarea { font-family: var(--f-body); }
 
     var status = new URLSearchParams(window.location.search).get('pago');
     var pid = new URLSearchParams(window.location.search).get('payment_id') || new URLSearchParams(window.location.search).get('collection_id') || '';
+    if (status !== 'exito') {
+      // Si el cliente tiene un pedido en preparación, se retoma el seguimiento (cartelito abajo)
+      try {
+        var saved = JSON.parse(localStorage.getItem(WATCH_KEY) || 'null');
+        if (saved && saved.code && Date.now() - saved.since < WATCH_MS) startWatch(saved, false);
+        else if (saved) localStorage.removeItem(WATCH_KEY);
+      } catch (e) {}
+    }
     if (status === 'exito') showReceipt(pid);
     else if (status === 'fallo') notice('El pago no se pudo completar. Podés intentar de nuevo.');
     else if (status === 'pendiente') notice('Tu pago está pendiente de confirmación. Te avisamos apenas se acredite.');
