@@ -26,6 +26,7 @@ const {
   sendToThinkion,
   freeOrderId,
   refreshPrices,
+  pickupCode,
 } = require("./menu");
 
 const SITE_URL = process.env.SITE_URL || "https://soypapina.com.ar";
@@ -78,6 +79,8 @@ exports.handler = async (event) => {
     }
     const pricing = applyDiscount(norm.total, coupon ? coupon.percent : 0);
     const generalNotes = cleanText(customer.notes_general, 300);
+    // Código de retiro: el cliente lo ve en su celular y la cocina en el KDS
+    const code = pickupCode();
 
     // ───── 100% de descuento: no hay nada para cobrar, va directo a Thinkion ─────
     if (pricing.pay <= 0) {
@@ -85,6 +88,7 @@ exports.handler = async (event) => {
       const order = buildThinkionOrder({
         orderId,
         name,
+        code,
         email: null,
         generalNotes,
         lines: norm.lines,
@@ -108,6 +112,7 @@ exports.handler = async (event) => {
       return json(200, {
         free: true,
         order_id: orderId,
+        pickup_code: code,
         subtotal: pricing.subtotal,
         discount: pricing.discount,
         total: 0,
@@ -156,6 +161,7 @@ exports.handler = async (event) => {
     const metadata = {
       customer_name: name,
       notes_general: generalNotes,
+      pickup_code: code,
       cart: compactCart(norm.lines),
     };
     if (coupon) {
@@ -200,6 +206,7 @@ exports.handler = async (event) => {
     return json(200, {
       init_point: checkoutUrl,
       preference_id: data.id,
+      pickup_code: code,
       subtotal: pricing.subtotal,
       discount: pricing.discount,
       total: pricing.pay,

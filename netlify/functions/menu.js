@@ -432,10 +432,31 @@ function thinkionUrl() {
   return `https://s${process.env.THINKION_NODE}.${process.env.THINKION_CLIENT_CODE}.thinkerp.cc/order/set/`;
 }
 
+// Número de cliente para Thinkion, calculado a partir del nombre: "TOBY" siempre da el
+// mismo número y "OLIVER" otro distinto. Así cada orden muestra su propio nombre en el
+// listado de Thinkion (antes todas usaban el cliente 1 y quedaban con el último nombre).
+function customerIdFor(name) {
+  const key = cleanText(name || "Cliente", 60).toUpperCase();
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return 100000000 + (h % 900000000); // entre 100.000.000 y 999.999.999
+}
+
+// Código de retiro de 4 cifras: lo ve el cliente en su celular y la cocina en el KDS.
+function pickupCode() {
+  return String(1000 + Math.floor(Math.random() * 9000));
+}
+
 function buildThinkionOrder(o) {
   const disc = o.discount && o.discount.amount > 0 ? o.discount : null;
   // El nombre va primero en las notas para que se vea en el KDS (el de Thinkion y el propio)
-  const notes = [`CLIENTE: ${cleanText(o.name || "Cliente", 60).toUpperCase()}`, "RETIRA EN EL LOCAL"];
+  const notes = [`CLIENTE: ${cleanText(o.name || "Cliente", 60).toUpperCase()}`];
+  const code = String(o.code || "").replace(/\D/g, "").slice(0, 6);
+  if (code) notes.push(`RETIRO ${code}`);
+  notes.push("RETIRA EN EL LOCAL");
   if (disc) notes.push(`CODIGO ${disc.code}`);
   const general = cleanText(o.generalNotes, 300);
   if (general) notes.push(general);
@@ -447,7 +468,7 @@ function buildThinkionOrder(o) {
       total: { debt: o.debt, discount: disc ? disc.amount : 0 },
     },
     customer: {
-      id_customer: 1,
+      id_customer: customerIdFor(o.name),
       name: o.name || "Cliente",
       surname: "",
       email: o.email || "sin-email@soypapina.com",
@@ -564,4 +585,6 @@ exports.applyDiscount = applyDiscount;
 exports.buildThinkionOrder = buildThinkionOrder;
 exports.sendToThinkion = sendToThinkion;
 exports.freeOrderId = freeOrderId;
+exports.pickupCode = pickupCode;
+exports.customerIdFor = customerIdFor;
 exports.refreshPrices = refreshPrices;

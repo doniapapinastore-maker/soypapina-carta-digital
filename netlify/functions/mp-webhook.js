@@ -101,6 +101,7 @@ exports.handler = async (event) => {
     const order = buildThinkionOrder({
       orderId,
       name: metadata.customer_name,
+      code: metadata.pickup_code,
       email: payment.payer && payment.payer.email,
       generalNotes: metadata.notes_general,
       lines: norm.lines,
