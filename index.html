@@ -1069,9 +1069,10 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       })
     };
     if (state.coupon) payload.coupon = state.coupon.code;
-    // ¿Tiene otro pedido en preparación de los últimos 30 minutos, a su nombre? Entonces van juntos.
-    var group = groupCandidate(name);
-    if (group) payload.group_with = group.code;
+    // ¿Este celular tiene otro pedido en preparación de los últimos 30 minutos? Entonces van juntos
+    // (aunque el cliente haya escrito el nombre distinto).
+    var group = groupCandidate();
+    if (group) { payload.group_with = group.code; payload.group_name = group.name; }
     setPaying(true);
     fetch(PAY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
@@ -1304,11 +1305,11 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       .then(function () { setTimeout(checkPaused, 60000); });
   }
 
-  function groupCandidate(name) {
+  function groupCandidate() {
     refresh();
-    var now = Date.now(), n = normName(name), best = null;
+    var now = Date.now(), best = null;
     watches.forEach(function (w) {
-      if (w.state === 'wait' && now - w.since < 30 * 60 * 1000 && w.name === n && (!best || w.since > best.since)) best = w;
+      if (w.state === 'wait' && now - w.since < 30 * 60 * 1000 && (!best || w.since > best.since)) best = w;
     });
     return best;
   }
