@@ -31,6 +31,19 @@ const {
 
 const SITE_URL = process.env.SITE_URL || "https://soypapina.com.ar";
 
+// ¿La cocina pausó los pedidos web desde el KDS?
+async function webPaused(event) {
+  try {
+    const { getStore, connectLambda } = require("@netlify/blobs");
+    try { connectLambda(event); } catch (e) {}
+    const cfg = await getStore("listos").get("cfg/paused", { type: "json" });
+    return !!(cfg && cfg.paused);
+  } catch (e) {
+    console.warn("No se pudo leer la pausa:", e && e.message);
+    return false; // ante la duda, se toman pedidos
+  }
+}
+
 const json = (statusCode, obj) => ({
   statusCode,
   headers: { "Content-Type": "application/json" },
@@ -67,6 +80,13 @@ exports.handler = async (event) => {
     // Precios actualizados desde Thinkion (si Thinkion no responde, usa los últimos conocidos)
     await refreshPrices();
 
+    if (await webPaused(event)) {
+      return json(503, { error: "Por el momento no estamos tomando pedidos online.", paused: true });
+    }
+
+    // Si el cliente tiene otro pedido en preparación (de los últimos 30 minutos), van juntos
+    const groupWith = String(body.group_with || "").replace(/\D/g, "").slice(0, 6);
+
     // Validamos el pedido y calculamos el total con el catálogo del servidor
     const norm = normalizeLines(body.lines);
     if (!norm.ok) return json(400, { error: norm.error });
@@ -86,6 +106,7 @@ exports.handler = async (event) => {
       const order = buildThinkionOrder({
         orderId,
         name,
+        groupWith,
         email: null,
         generalNotes,
         lines: norm.lines,
@@ -109,7 +130,8 @@ exports.handler = async (event) => {
       return json(200, {
         free: true,
         order_id: orderId,
-        pickup_code: pickupCodeFor(orderId),
+        pickup_code: groupWith || pickupCodeFor(orderId),
+        grouped: !!groupWith,
         subtotal: pricing.subtotal,
         discount: pricing.discount,
         total: 0,
@@ -160,6 +182,7 @@ exports.handler = async (event) => {
       notes_general: generalNotes,
       cart: compactCart(norm.lines),
     };
+    if (groupWith) metadata.group_with = groupWith;
     if (coupon) {
       metadata.coupon = coupon.code;
       metadata.discount_key = coupon.key;

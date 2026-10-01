@@ -11,8 +11,15 @@
 //     → el cliente pidió que le avisemos con una notificación.
 //  POST desde el celular { action: "ack", code, name }
 //     → el cliente ya vio el aviso de "listo" (no se le manda el recordatorio).
-//  GET ?code=4821 → el celular pregunta si SU pedido ya está listo (o si se anuló).
-//  GET (sin código) → últimos pedidos listos (no se usa en la dark kitchen, queda disponible).
+//  GET ?code=4821 → el celular pregunta si SU pedido ya está listo (o si se anuló) y la hora estimada.
+//  GET ?estado=1  → la carta pregunta si los pedidos web están en pausa.
+//  GET ?registro=AAAA-MM-DD&clave=LISTOS_KEY → tiempos reales de ese día (CSV, para ajustar los tiempos).
+//  POST desde el KDS (con la clave):
+//     { action: "pause", paused }      pausar / reanudar los pedidos web
+//     { action: "pause-status" }       el KDS pregunta si está en pausa
+//     { action: "eta", items }         hora estimada de cada pedido web en cocina
+//     { action: "log", ... }           cuánto tardó de verdad un pedido
+//  GET (sin nada) → últimos pedidos listos (no se usa en la dark kitchen, queda disponible).
 //
 // Variables en Netlify:
 //   LISTOS_KEY          clave de avisos (la misma que se carga en el KDS)
@@ -65,7 +72,11 @@ function keyTime(key) {
 
 async function prune(store, now) {
   const { blobs } = await store.list();
-  const old = blobs.filter((b) => { const at = keyTime(b.key); return !at || now - at > KEEP_MS; });
+  const old = blobs.filter((b) => {
+    if (!/^[rcs]\//.test(b.key)) return false; // configuración, horas estimadas y registro no se borran acá
+    const at = keyTime(b.key);
+    return !at || now - at > KEEP_MS;
+  });
   await Promise.all(old.slice(0, 60).map((b) => store.delete(b.key)));
 }
 
@@ -88,13 +99,14 @@ function canPush() {
 const VIBRATE = [600, 200, 600, 200, 600, 200, 1200];
 
 function payloadFor(entry, kind) {
+  const many = entry.count > 1;
   if (kind === "reminder") {
-    return { title: "Tu pedido te espera 🍔", body: `Ya está listo para retirar en Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
+    return { title: many ? `Tus ${entry.count} pedidos te esperan` : "Tu pedido te espera", body: `Ya está${many ? "n" : ""} listo${many ? "s" : ""} para retirar en Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
   }
   if (kind === "cancelled") {
     return { title: "Hubo un problema con tu pedido", body: "Escribinos por WhatsApp y lo resolvemos.", tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "cancelled", url: "/" };
   }
-  return { title: "¡Tu pedido está listo! 🍔", body: `Pasá a retirarlo por Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
+  return { title: many ? `¡Tus ${entry.count} pedidos están listos!` : "¡Tu pedido está listo!", body: `Pasá a retirar${many ? "los" : "lo"} por Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
 }
 
 // Suscripciones de este código y este cliente
@@ -201,10 +213,43 @@ exports.handler = async (event) => {
       const sent = (event.headers && (event.headers["x-server-token"] || event.headers["X-Server-Token"])) || "";
       if (!key || sent !== key) return reply(401, { ok: false, error: "Clave de avisos incorrecta" });
 
+      // Pausar / reanudar pedidos web
+      if (b.action === "pause") {
+        const cfg = { paused: !!b.paused, at: now };
+        await store.setJSON("cfg/paused", cfg);
+        return reply(200, { ok: true, paused: cfg.paused });
+      }
+      if (b.action === "pause-status") {
+        const cfg = await store.get("cfg/paused", { type: "json" });
+        return reply(200, { ok: true, paused: !!(cfg && cfg.paused) });
+      }
+      // Hora estimada de cada pedido web que está en cocina
+      if (b.action === "eta") {
+        const items = (Array.isArray(b.items) ? b.items : []).slice(0, 60).map((x) => ({
+          code: digits(x.code, 6), name: normName(x.name), eta: Number(x.eta) || 0,
+        })).filter((x) => x.code && x.eta);
+        await store.setJSON("eta/actual", { at: now, items });
+        return reply(200, { ok: true });
+      }
+      // Registro de cuánto tardó de verdad cada pedido (para ajustar los tiempos)
+      if (b.action === "log") {
+        const done = Number(b.done) || now;
+        const day = new Date(done - 3 * 3600 * 1000).toISOString().slice(0, 10); // día de Argentina
+        const rec = {
+          order: clean(b.order, 20), code: digits(b.code, 6), channel: clean(b.channel, 30),
+          products: clean(b.products, 300), category: clean(b.category, 40),
+          printed: Number(b.printed) || 0, done, minutes: Number(b.minutes) || 0,
+          ideal: Number(b.ideal) || 0, max: Number(b.max) || 0,
+        };
+        await store.setJSON(`l/${day}/${done}-${rec.order || Math.random().toString(36).slice(2, 7)}`, rec);
+        return reply(200, { ok: true });
+      }
+
       const entry = {
         order: clean(b.order, 20),
         name: normName(b.name),
         code: digits(b.code, 6),
+        count: Math.max(1, Math.min(9, Number(b.count) || 1)),
         channel: clean(b.channel, 30),
         status: b.status === "cancelled" ? "cancelled" : (b.status === "reminder" ? "reminder" : "ready"),
         at: now,
@@ -224,6 +269,27 @@ exports.handler = async (event) => {
 
     const q = event.queryStringParameters || {};
 
+    // ───── ¿Pedidos web en pausa? ─────
+    if (q.estado) {
+      const cfg = await store.get("cfg/paused", { type: "json" });
+      return reply(200, { ok: true, paused: !!(cfg && cfg.paused) }, 5);
+    }
+
+    // ───── Registro de tiempos de un día (CSV) ─────
+    if (q.registro) {
+      if (!process.env.LISTOS_KEY || q.clave !== process.env.LISTOS_KEY) return reply(401, { ok: false, error: "Clave incorrecta" });
+      const day = String(q.registro).replace(/[^\d-]/g, "").slice(0, 10);
+      const { blobs } = await store.list({ prefix: `l/${day}/` });
+      const rows = ["pedido;codigo;canal;categoria;productos;entro;listo;minutos;ideal;maximo"];
+      const hm = (ms) => ms ? new Date(ms - 3 * 3600 * 1000).toISOString().slice(11, 16) : "";
+      for (const bl of blobs.slice(0, 2000)) {
+        const r = await store.get(bl.key, { type: "json" });
+        if (!r) continue;
+        rows.push([r.order, r.code, r.channel, r.category, `"${String(r.products).replace(/"/g, "'")}"`, hm(r.printed), hm(r.done), r.minutes, r.ideal, r.max].join(";"));
+      }
+      return { statusCode: 200, headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="tiempos-${day}.csv"` }, body: "\ufeff" + rows.join("\n") };
+    }
+
     // ───── El celular del cliente pregunta por su código ─────
     if (q.code) {
       const code = digits(q.code, 6);
@@ -237,7 +303,13 @@ exports.handler = async (event) => {
         const e = await store.get(x.key, { type: "json" });
         if (e) list.push({ name: e.name, at: e.at, status: e.status || "ready" });
       }
-      return reply(200, { ok: true, ready: list }, 2);
+      // Hora estimada que calcula el KDS (solo si es reciente)
+      let eta = [];
+      try {
+        const etas = await store.get("eta/actual", { type: "json" });
+        if (etas && now - etas.at < 5 * 60 * 1000) eta = (etas.items || []).filter((x) => x.code === code).map((x) => ({ name: x.name, eta: x.eta }));
+      } catch (e) {}
+      return reply(200, { ok: true, ready: list, eta }, 2);
     }
 
     // ───── Últimos pedidos listos ─────

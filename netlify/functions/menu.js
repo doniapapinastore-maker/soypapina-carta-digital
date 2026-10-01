@@ -457,8 +457,11 @@ function buildThinkionOrder(o) {
   const disc = o.discount && o.discount.amount > 0 ? o.discount : null;
   // El nombre va primero en las notas para que se vea en el KDS (el de Thinkion y el propio)
   const notes = [`CLIENTE: ${cleanText(o.name || "Cliente", 60).toUpperCase()}`];
-  const code = pickupCodeFor(o.orderId);
+  // Si va junto con un pedido anterior del mismo cliente, comparte su código de retiro
+  const groupWith = String(o.groupWith || "").replace(/\D/g, "").slice(0, 6);
+  const code = groupWith || pickupCodeFor(o.orderId);
   if (code) notes.push(`RETIRO ${code}`);
+  if (groupWith) notes.push(`VA JUNTO CON ${groupWith}`);
   notes.push("RETIRA EN EL LOCAL");
   if (disc) notes.push(`CODIGO ${disc.code}`);
   const general = cleanText(o.generalNotes, 300);
