@@ -102,6 +102,7 @@ exports.handler = async (event) => {
       orderId,
       name: metadata.customer_name,
       groupWith: metadata.group_with,
+      groupName: metadata.group_name,
       email: payment.payer && payment.payer.email,
       generalNotes: metadata.notes_general,
       lines: norm.lines,

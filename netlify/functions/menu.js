@@ -461,7 +461,9 @@ function buildThinkionOrder(o) {
   const groupWith = String(o.groupWith || "").replace(/\D/g, "").slice(0, 6);
   const code = groupWith || pickupCodeFor(o.orderId);
   if (code) notes.push(`RETIRO ${code}`);
-  if (groupWith) notes.push(`VA JUNTO CON ${groupWith}`);
+  // Con el nombre del primer pedido, así se agrupan aunque el cliente escriba otro nombre
+  const groupName = cleanText(o.groupName || "", 40).toUpperCase().replace(/\s-\s/g, " ");
+  if (groupWith) notes.push(`VA JUNTO CON ${groupWith}${groupName ? " " + groupName : ""}`);
   notes.push("RETIRA EN EL LOCAL");
   if (disc) notes.push(`CODIGO ${disc.code}`);
   const general = cleanText(o.generalNotes, 300);

@@ -86,6 +86,7 @@ exports.handler = async (event) => {
 
     // Si el cliente tiene otro pedido en preparación (de los últimos 30 minutos), van juntos
     const groupWith = String(body.group_with || "").replace(/\D/g, "").slice(0, 6);
+    const groupName = groupWith ? cleanText(body.group_name, 40) : "";
 
     // Validamos el pedido y calculamos el total con el catálogo del servidor
     const norm = normalizeLines(body.lines);
@@ -107,6 +108,7 @@ exports.handler = async (event) => {
         orderId,
         name,
         groupWith,
+        groupName,
         email: null,
         generalNotes,
         lines: norm.lines,
@@ -182,7 +184,7 @@ exports.handler = async (event) => {
       notes_general: generalNotes,
       cart: compactCart(norm.lines),
     };
-    if (groupWith) metadata.group_with = groupWith;
+    if (groupWith) { metadata.group_with = groupWith; metadata.group_name = groupName; }
     if (coupon) {
       metadata.coupon = coupon.code;
       metadata.discount_key = coupon.key;
