@@ -556,11 +556,17 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
 
         <div class="lbl">
           <span id="phone-lbl">TELÉFONO (OPCIONAL)</span>
-          <input class="field" id="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="Ej: 11 5555 1234" aria-labelledby="phone-lbl" aria-describedby="err-phone">
+          <input class="field" id="phone" type="tel" inputmode="tel" autocomplete="off" maxlength="20" placeholder="Ej: 11 5555 1234" aria-labelledby="phone-lbl" aria-describedby="err-phone">
           <p class="phone-hint">Dejalo y te avisamos si pasa algo con tu pedido. Además, sumás pedidos para tus beneficios del Club. Lo usamos solo para eso.</p>
           <p class="msg" id="err-phone" hidden>Revisá el teléfono: tiene que tener entre 8 y 13 números.</p>
           <label class="club-check" id="club-check" hidden><input type="checkbox" id="club-join"> <span>🎁 Sumarme al Club Doña Papina (beneficios de bienvenida, cumpleaños y por pedidos)</span></label>
-          <label class="club-check sub" id="club-promos-row" hidden><input type="checkbox" id="club-promos"> <span>Quiero recibir promociones (opcional)</span></label>
+          <div id="club-promos-row" hidden>
+            <div class="club-check sub" style="cursor:default">🎂 Tu cumple (opcional, para tu regalo):
+              <select class="field" id="club-day" style="width:auto;padding:4px 6px"></select>
+              <select class="field" id="club-month" style="width:auto;padding:4px 6px"></select>
+            </div>
+            <label class="club-check sub"><input type="checkbox" id="club-promos"> <span>Quiero recibir promociones (opcional)</span></label>
+          </div>
         </div>
 
         <div id="lines-box"></div>
@@ -1106,7 +1112,10 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       })
     };
     if (state.coupon) payload.coupon = state.coupon.code;
-    if (phone && $('club-join').checked) { payload.club = true; payload.promos = $('club-promos').checked; }
+    if (phone && $('club-join').checked) {
+      payload.club = true; payload.promos = $('club-promos').checked;
+      if ($('club-day').value && $('club-month').value) { payload.cumple = $('club-day').value + '/' + $('club-month').value; saveCliente({ cumple: payload.cumple }); }
+    }
     // ¿Este celular tiene otro pedido en preparación de los últimos 30 minutos? Entonces van juntos
     // (aunque el cliente haya escrito el nombre distinto).
     var group = groupCandidate();
@@ -1195,7 +1204,10 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     $('rc-gift').hidden = !regalo;
     if (regalo) $('rc-gift').textContent = '🎁 Este pedido tiene un regalo del Club: ' + regalo;
     if (pending && pending.club) markClubMember();
-    $('rc-club').hidden = isClubMember();
+    // Si no es del Club: "Sumate". Si es del Club pero no sabemos su cumple: "Contanos cuándo es tu cumple".
+    var needCumple = isClubMember() && !loadCliente().cumple;
+    $('rc-club').hidden = isClubMember() && !needCumple;
+    $('rc-club').textContent = needCumple ? '🎂 Contanos cuándo es tu cumple y te regalamos algo' : '🎁 Sumate al Club Doña Papina';
     $('rc-club').onclick = function () { openClub({ name: name, phone: (pending && pending.phone) || loadCliente().phone || '' }); };
     // El número largo ya no se muestra en los pedidos sin pago: el código lo reemplaza
     $('rc-id-box').hidden = free && !!code;
@@ -1335,7 +1347,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
   // ───── Club Doña Papina ─────
   var CLUB_URL = '/.netlify/functions/club';
   function loadCliente() { try { return JSON.parse(localStorage.getItem('dp-cliente') || '{}') || {}; } catch (e) { return {}; } }
-  function saveCliente(c) { try { var o = loadCliente(); if (c.name) o.name = c.name; if (c.phone) o.phone = c.phone; localStorage.setItem('dp-cliente', JSON.stringify(o)); } catch (e) {} }
+  function saveCliente(c) { try { var o = loadCliente(); if (c.name) o.name = c.name; if (c.phone) o.phone = c.phone; if (c.cumple) o.cumple = c.cumple; localStorage.setItem('dp-cliente', JSON.stringify(o)); } catch (e) {} }
   function isClubMember() { return !!loadCliente().club; }
   function markClubMember() { try { var o = loadCliente(); o.club = true; localStorage.setItem('dp-cliente', JSON.stringify(o)); } catch (e) {} }
 
@@ -1391,7 +1403,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
         .then(function (res) {
           if (!res.ok || !res.d.ok) throw new Error((res.d && res.d.error) || 'No pudimos guardar tus datos. Probá de nuevo en un rato.');
           markClubMember();
-          saveCliente({ name: data.nombre, phone: data.telefono });
+          saveCliente({ name: data.nombre, phone: data.telefono, cumple: data.cumple });
           box.innerHTML = '<h3>🎉 ¡Ya sos parte del Club!</h3><p class="ok">Te reconocemos por tu teléfono en cada pedido.</p>' +
             '<p>Acordate de dejar tu teléfono al pedir para recibir tus beneficios.</p>' +
             '<div class="club-actions"><button type="button" class="go" id="cl-close">Listo</button></div>';
@@ -1785,6 +1797,10 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       if (c.name && !$('name').value) $('name').value = c.name;
       $('phone').addEventListener('input', refreshClubCheck);
       $('club-join').addEventListener('change', refreshClubCheck);
+      var dd = ['<option value="">Día</option>'], mm = ['<option value="">Mes</option>'];
+      for (var i = 1; i <= 31; i++) dd.push('<option>' + i + '</option>');
+      ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'].forEach(function (m, i) { mm.push('<option value="' + (i + 1) + '">' + m + '</option>'); });
+      $('club-day').innerHTML = dd.join(''); $('club-month').innerHTML = mm.join('');
       refreshClubCheck();
       // soypapina.com.ar/club abre el formulario del Club
       if (/^\/club/.test(window.location.pathname) || new URLSearchParams(window.location.search).get('club') === '1') openClub({});
