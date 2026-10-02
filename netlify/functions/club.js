@@ -1,6 +1,7 @@
 // netlify/functions/club.js
 //
-// La Banda de Papina. Dos usos:
+// La Banda de Papina. Tres usos:
+//  • GET ?pagina=1 → beneficios, fotos y novedades para soypapina.com.ar/banda (Netlify lo guarda 5 minutos).
 //  • { accion: "estado", telefono }  → qué regalos lo esperan y cómo van sus sellos
 //    (la carta lo pide cuando el cliente escribe su celu). Sin teléfono, devuelve solo
 //    los beneficios activos (para el formulario). Solo lee.
@@ -38,6 +39,26 @@ async function appsScript(payload, timeoutMs) {
 }
 
 exports.handler = async (event) => {
+  // ───── Página soypapina.com.ar/banda: beneficios, fotos y novedades ─────
+  // Netlify la guarda 5 minutos, así casi no se usa la función ni el sheet.
+  if (event.httpMethod === "GET" && (event.queryStringParameters || {}).pagina) {
+    try {
+      const d = await appsScript({ accion: "pagina" }, 9000);
+      if (!d || !d.ok) return json(502, { ok: false });
+      return {
+        statusCode: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=60",
+          "Netlify-CDN-Cache-Control": "public, durable, s-maxage=300, stale-while-revalidate=600",
+        },
+        body: JSON.stringify(d),
+      };
+    } catch (err) {
+      console.warn("Banda (página):", err && err.message);
+      return json(502, { ok: false });
+    }
+  }
   if (event.httpMethod !== "POST") return json(405, { ok: false, error: "Método no permitido" });
   let b = {};
   try { b = JSON.parse(event.body || "{}"); } catch (e) { return json(400, { ok: false, error: "Datos inválidos" }); }
