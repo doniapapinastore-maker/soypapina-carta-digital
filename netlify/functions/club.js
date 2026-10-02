@@ -85,6 +85,7 @@ exports.handler = async (event) => {
     try {
       const d = await appsScript({
         accion: "encuesta", resultado: b.resultado, canal: b.canal === "whatsapp" ? "whatsapp" : "web",
+        id: String(b.id || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40),
         codigo: String(b.codigo || "").replace(/\D/g, "").slice(0, 6),
         telefono: String(b.telefono || "").replace(/\D/g, "").slice(0, 13),
         nombre: clean(b.nombre, 60), gusto: clean(b.gusto, 80), comentario: clean(b.comentario, 500),
