@@ -472,6 +472,7 @@ async function clienteDelPedido(o, timeoutMs) {
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         clave: key, accion: "pedido", telefono, nombre: cleanText(o.name, 60), club: !!o.club, promos: !!o.promos,
+        cumple: cleanText(o.cumple, 5),
         codigo: String(o.code || ""), total: Number(o.total) || 0, pedido: String(o.orderId || ""),
         productos: (o.lines || []).map((l) => (CATALOG.products[l.key] || {}).code || (CATALOG.products[l.key] || {}).name || l.key),
       }),
@@ -489,6 +490,8 @@ async function clienteDelPedido(o, timeoutMs) {
 }
 
 function buildThinkionOrder(o) {
+  // Cada cliente con datos propios: Thinkion no puede juntar a dos personas distintas
+  const custId = cleanPhone(o.phone) ? customerIdFor("TEL " + cleanPhone(o.phone)) : customerIdFor(o.name);
   const disc = o.discount && o.discount.amount > 0 ? o.discount : null;
   // El nombre va primero en las notas para que se vea en el KDS (el de Thinkion y el propio)
   const notes = [`CLIENTE: ${cleanText(o.name || "Cliente", 60).toUpperCase()}`];
@@ -515,15 +518,15 @@ function buildThinkionOrder(o) {
     },
     customer: {
       // Con teléfono: un cliente por teléfono. Sin teléfono: por nombre, como siempre.
-      id_customer: cleanPhone(o.phone) ? customerIdFor("TEL " + cleanPhone(o.phone)) : customerIdFor(o.name),
+      id_customer: custId,
       name: o.name || "Cliente",
       surname: "",
-      email: o.email || (cli && cli.mail) || "sin-email@soypapina.com",
+      email: o.email || (cli && cli.mail) || (cleanPhone(o.phone) ? `tel${cleanPhone(o.phone)}` : `c${custId}`) + "@clientes.soypapina.com.ar",
       tel: cleanPhone(o.phone) || null,
       doc: null,
       company: null,
       address: {
-        input: "Doña Papina - Retiro en el local",
+        input: `Doña Papina - Retiro en el local (cliente ${custId})`,
         route: "-",
         number: 0,
         department: null,

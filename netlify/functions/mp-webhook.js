@@ -100,7 +100,7 @@ exports.handler = async (event) => {
     const orderId = Number(payment.id); // id del pago de MP: único y trazable
     // Ficha del cliente (si dejó teléfono): frecuente / cortesía. Si tarda o falla, sigue igual.
     const cliente = metadata.phone ? await clienteDelPedido({
-      phone: metadata.phone, name: metadata.customer_name, club: !!metadata.club, promos: !!metadata.promos,
+      phone: metadata.phone, name: metadata.customer_name, club: !!metadata.club, promos: !!metadata.promos, cumple: metadata.cumple || "",
       code: metadata.group_with || pickupCodeFor(orderId), orderId, total: paid, lines: norm.lines,
     }, 8000) : null;
     const order = buildThinkionOrder({
