@@ -1462,6 +1462,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
           });
           if (!mine.length) return;
           mine.sort(function (a, b) { return b.at - a.at; });
+          if (mine[0].gift) update(w.code, function (y) { y.gift = mine[0].gift; });
           setState(w, mine[0].status === 'cancelled' ? 'cancel' : 'ready');
         })
         .catch(function () { /* sin conexión: se vuelve a probar */ });
@@ -1706,7 +1707,8 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       var invite = st === 'wait' && !w.push && !w.noPush;
       sub.classList.toggle('is-invite', invite);
       sub.classList.toggle('is-ok', st === 'wait' && w.push);
-      if (st === 'ready') sub.textContent = many ? 'Pasá a retirarlos. Mostrá tu código al llegar.' : 'Pasá a retirarlo. Mostrá tu código al llegar.';
+      if (st === 'ready') sub.textContent = (many ? 'Pasá a retirarlos. Mostrá tu código al llegar.' : 'Pasá a retirarlo. Mostrá tu código al llegar.') +
+        (w.gift ? ' 🎁 Incluye un regalo del Club: ' + String(w.gift).toLowerCase() + '.' : '');
       else if (st === 'cancel') sub.textContent = 'Escribinos por WhatsApp y lo resolvemos.';
       else if (w.push) sub.innerHTML = '✅ <b>Notificaciones activadas.</b> Te avisamos cuando esté listo, ya podés cerrar la página.';
       else if (w.noPush) sub.textContent = w.noPush;
