@@ -48,6 +48,11 @@ const CATALOG = {
     s_lm:  { id: 139, code: "LM",  name: "LM La Malcriada",        price: 14000, bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
     s_lfs: { id: 140, code: "LFS", name: "LFS La Falsa Sana",      price: 9600,  bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
     s_lpp: { id: 142, code: "LPP", name: "LPP La Pequeña Papina",  price: 8500,  bread: true, fries: false, sauce: true, drink: false, extras: true, available: true },
+
+    // ─── Papas sueltas (las mismas del combo, para el que no quiere combo) ───
+    // needLive: true = solo se pueden pedir si Thinkion devolvió su precio (no tienen precio de respaldo)
+    p_cla: { id: 185, code: "PC", name: "PAPAS CLASICAS CHICAS",  price: 0, bread: false, fries: false, sauce: false, drink: false, extras: true, available: true, needLive: true },
+    p_saz: { id: 186, code: "PS", name: "PAPAS SAZONADAS CHICAS", price: 0, bread: false, fries: false, sauce: false, drink: false, extras: true, available: true, needLive: true },
   },
 
   // ─── Opciones (van a Thinkion como productos "hijos", a $0) ──────
@@ -225,7 +230,7 @@ async function refreshPrices(force) {
       for (const p of Object.values(CATALOG.products)) {
         if (p.noLive) continue;
         const v = live[p.id];
-        if (Number.isFinite(v) && v > 0) p.price = Math.round(v);
+        if (Number.isFinite(v) && v > 0) { p.price = Math.round(v); p.livePrice = true; }
         else missing.push(p.id);
       }
       priceState.source = "thinkion";
@@ -254,6 +259,8 @@ function cleanText(v, max) {
 }
 
 const wants = (p, what) => p[what] !== false;
+// Un producto se puede pedir si está activo y, si no tiene precio de respaldo, si Thinkion ya dio su precio
+const disponible = (p) => !!p.available && (!p.needLive || (p.livePrice === true && p.price > 0));
 
 // Valida lo que mandó el celular y lo deja en forma "limpia".
 // Devuelve { ok:true, lines, total } o { ok:false, error }.
@@ -279,7 +286,7 @@ function normalizeLines(raw, opts) {
     const r = raw[i];
     const p = CATALOG.products[r && r.key];
     if (!p) return fail("Producto desconocido");
-    if (!p.available && !skipAvailability) return fail(`${p.name} no está disponible`);
+    if (!disponible(p) && !skipAvailability) return fail(`${p.name} no está disponible`);
 
     const line = { key: r.key, bread: null, fries: null, sauce: null, extras: [], drink: null, note: "", price: p.price };
 
@@ -616,7 +623,7 @@ exports.handler = async (event) => {
   for (const [key, p] of Object.entries(CATALOG.products)) {
     products[key] = {
       price: p.price,
-      available: p.available,
+      available: disponible(p),
       bread: p.bread,
       fries: p.fries,
       sauce: wants(p, "sauce"),
