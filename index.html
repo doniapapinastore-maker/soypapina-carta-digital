@@ -71,6 +71,19 @@ input, textarea { font-family: var(--f-body); }
 .nd-t { font-family: var(--f-display); font-size: clamp(22px, 6.6vw, 30px); line-height: 1.04; letter-spacing: 0.5px; }
 .nd-s { margin-top: 4px; font-weight: 700; font-size: 14.5px; line-height: 1.25; }
 
+/* ───────── Franja: La Banda de Papina ───────── */
+.bnd { position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--paper); border: 2px solid var(--brown); border-radius: 16px; padding: 18px 16px 14px;
+  box-shadow: var(--shadow); color: var(--ink); text-decoration: none; }
+.bnd::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8px;
+  background: repeating-linear-gradient(90deg, var(--red) 0 16px, var(--gold) 16px 32px); }
+.bnd-tx { flex: 1 1 220px; min-width: 0; }
+.bnd-t { font-family: var(--f-display); font-size: 21px; line-height: 1.1; color: var(--red); }
+.bnd-s { margin-top: 4px; font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.bnd-b { flex: 0 0 auto; min-height: 42px; padding: 0 16px; border-radius: 999px; background: var(--red); color: var(--on-red);
+  font-weight: 800; font-size: 14px; display: inline-flex; align-items: center; }
+.msg.is-info { color: var(--brown); }
+
 .notice {
   display: flex; align-items: flex-start; gap: 10px; justify-content: space-between;
   background: var(--paper); border: 2px solid var(--red); border-radius: 12px; padding: 10px 12px;
@@ -333,6 +346,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
 /* La franja de arriba (rojo y dorado, como un toldo) identifica todo lo que es de La Banda */
 .bp { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
 .bp-wait { margin: 0; font-size: 12px; font-weight: 700; color: var(--brown); }
+.bp-alerta { margin: 0; padding: 9px 11px; border-radius: 10px; background: var(--red); color: var(--on-red); font-size: 13.5px; font-weight: 800; line-height: 1.3; }
 .bp-gift, .rc-banda, .club-box { position: relative; overflow: hidden; }
 .bp-gift::before, .rc-banda::before, .club-box::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 7px; background: repeating-linear-gradient(90deg, var(--red) 0 16px, var(--gold) 16px 32px); }
 .bp-gift { border: 2px solid var(--brown); border-radius: 14px; background: var(--paper); padding: 15px 12px 10px; box-shadow: var(--shadow); }
@@ -521,6 +535,11 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       <div class="nd-s">Tu pedido se retira en el local.</div>
     </div>
   </div>
+
+  <a class="bnd" id="bnd" href="/banda" hidden>
+    <div class="bnd-tx"><div class="bnd-t" id="bnd-t">🤝 La Banda de Papina</div><div class="bnd-s" id="bnd-s">Sumarte es gratis y tiene sus premios.</div></div>
+    <span class="bnd-b" id="bnd-b">Conocé la banda</span>
+  </a>
 
   <div class="notice" id="notice" role="status" hidden>
     <span id="notice-text"></span>
@@ -1125,8 +1144,12 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     state.paying = on;
     renderCart();
   }
+  function setPayInfo(text) {
+    var e = $('pay-error'); e.textContent = text || ''; e.hidden = !text; e.classList.toggle('is-info', !!text);
+  }
   function pay() {
-    if (state.paying) return;
+    if (state.paying || state.esperandoBanda) return;
+    $('pay-error').classList.remove('is-info');
     if (state.paused) { toast('Por el momento no estamos tomando pedidos online.'); return; }
     if (!state.lines.length || !state.menu) { toast('Elegí al menos un producto para poder pagar.'); return; }
     setPayError('');
@@ -1143,6 +1166,27 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     var okPhone = !phone || (phone.length >= 8 && phone.length <= 13);
     fieldError('phone', !okPhone);
     if (!okPhone) { $('phone').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    // La Banda: antes de pagar, esperar a saber si Papina le tiene algo guardado (una sola vez por celu)
+    if (phone) {
+      if (banda.tel !== phone) onPhoneChange();
+      if (banda.tel === phone && banda.loading && state.bandaEspero !== phone) {
+        if (!banda.promesa) consultarBanda(phone);
+        state.esperandoBanda = true; state.bandaEspero = phone;
+        setPayInfo('Fijándonos si Papina te tiene algo guardado…');
+        var listo = false;
+        var seguir = function () { if (listo) return; listo = true; state.esperandoBanda = false; setPayInfo(''); pay(); };
+        banda.promesa.then(seguir, seguir);
+        setTimeout(seguir, 12000);
+        return;
+      }
+      var sinElegir = regalosPendientes().filter(function (t) { return !(t in banda.picks); });
+      if (sinElegir.length) {
+        banda.frenado = true;
+        refreshClubCheck();
+        $('banda-pick').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
     saveCliente({ name: name, phone: phone });
     var payload = {
       customer: { name: name, notes_general: notes, phone: phone },
@@ -1407,7 +1451,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
   var EMOJI_REGALO = { bienvenida: '🎁', cumple: '🎂', sellos: '🏅' };
   // Lo que sabemos del celu escrito en el pedido: qué regalos lo esperan y cómo van sus sellos.
   // Se consulta una sola vez por celu, y solo cuando ya hay algo en el pedido (así se gasta poco).
-  var banda = { tel: '', data: null, loading: false, picks: {}, timer: null };
+  var banda = { tel: '', data: null, loading: false, picks: {}, timer: null, promesa: null, fallo: false, frenado: false };
 
   // Los beneficios activos quedan guardados 10 minutos (para el formulario y el comprobante)
   function guardarBeneficios(d) { try { sessionStorage.setItem('dp-banda-ben', JSON.stringify({ at: Date.now(), d: d })); } catch (e) {} }
@@ -1437,16 +1481,25 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     }
     if (ph === banda.tel) { refreshClubCheck(); return; }
     banda.tel = ph; banda.data = null; banda.picks = {}; banda.loading = true;
+    banda.promesa = null; banda.fallo = false; banda.frenado = false;
     refreshClubCheck();
-    banda.timer = setTimeout(function () {
-      pedirEstado(ph).then(function (d) {
+    banda.timer = setTimeout(function () { consultarBanda(ph); }, 600);
+  }
+
+  // Le pregunta al sheet qué regalos esperan a este celu (si falla, reintenta una vez)
+  function consultarBanda(ph) {
+    clearTimeout(banda.timer); banda.timer = null;
+    banda.loading = true; banda.fallo = false;
+    banda.promesa = pedirEstado(ph)
+      .then(function (d) { return d || pedirEstado(ph); })
+      .then(function (d) {
         if (banda.tel !== ph) return;
-        banda.loading = false; banda.data = d;
+        banda.loading = false; banda.data = d; banda.fallo = !d; banda.promesa = null;
         // Si es el celu de este teléfono, se actualiza si es de La Banda o no
-        if (d && loadCliente().phone === ph) markClubMember(!!d.socio);
+        if (d && loadCliente().phone === ph) { markClubMember(!!d.socio); pintarFranja(); }
         refreshClubCheck();
       });
-    }, 600);
+    return banda.promesa;
   }
 
   // ¿El cumple ("d/m") cae dentro de ±dias de hoy?
@@ -1505,15 +1558,22 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     var box = $('banda-pick');
     box.textContent = '';
     if (!valido) { box.hidden = true; return; }
+    var interesa = esSocio() || $('club-join').checked;
     if (banda.loading) {
-      var espera = esSocio() || $('club-join').checked;
-      box.hidden = !espera;
-      if (espera) box.appendChild(h('p', { class: 'bp-wait', text: 'Fijándonos si Papina te tiene algo guardado…' }));
+      box.hidden = false;
+      box.appendChild(h('p', { class: 'bp-wait', text: 'Fijándonos si Papina te tiene algo guardado…' }));
+      return;
+    }
+    if (banda.fallo) {
+      box.hidden = !interesa;
+      if (interesa) box.appendChild(h('p', { class: 'bp-wait', text: 'No pudimos fijarnos tus regalos ahora. Tranqui: si tenés alguno, queda guardado para la próxima.' }));
       return;
     }
     var lista = regalosPendientes();
     Object.keys(banda.picks).forEach(function (t) { if (lista.indexOf(t) === -1) delete banda.picks[t]; });
     box.hidden = !lista.length;
+    var sinElegir = lista.filter(function (t) { return !(t in banda.picks); });
+    if (banda.frenado && sinElegir.length) box.appendChild(h('p', { class: 'bp-alerta', role: 'alert', text: '🎁 Papina te tiene algo: elegilo o tocá “Esta vez paso”.' }));
     lista.forEach(function (t) {
       var ben = banda.data.beneficios[t];
       var pick = banda.picks[t];
@@ -1536,6 +1596,40 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     banda.picks[t] = op;
     refreshClubCheck();
   }
+
+  // ───── Franja de La Banda en la carta ─────
+  var franjaPedida = false;
+  function pintarFranja() {
+    var a = $('bnd');
+    if (!a) return;
+    if (isClubMember()) {
+      $('bnd-t').textContent = '🤝 Vos ya sos de los nuestros';
+      $('bnd-s').textContent = 'Mirá cómo venís con tus sellos y qué te tiene guardado Papina.';
+      $('bnd-b').textContent = 'Mirá tus beneficios';
+      a.href = '/banda#como-vengo';
+      a.hidden = false;
+      return;
+    }
+    $('bnd-t').textContent = '🤝 La Banda de Papina';
+    $('bnd-b').textContent = 'Conocé la banda';
+    a.href = '/banda';
+    var d = beneficiosGuardados();
+    if (d && d.beneficios) {
+      var b = d.beneficios, partes = [];
+      if (b.bienvenida) partes.push('regalo de bienvenida');
+      if (b.cumple) partes.push('algo en tu cumple');
+      if (b.sellos && d.cada) partes.push(d.cada === 1 ? 'premio en cada pedido' : 'premio cada ' + d.cada + ' pedidos');
+      $('bnd-s').textContent = partes.length ? 'Sumarte es gratis y tiene sus premios: ' + listaY(partes) + '.' : 'Sumarte es gratis y Papina te reconoce cada vez que volvés.';
+    }
+    a.hidden = false;
+    if (!d && !franjaPedida) {
+      franjaPedida = true;
+      fetch(CLUB_URL + '?pagina=1').then(function (r) { return r.json(); }).then(function (x) {
+        if (x && x.ok) { guardarBeneficios({ beneficios: x.beneficios, cada: x.cada, diasCumple: x.diasCumple, frecuenteDesde: x.frecuenteDesde }); pintarFranja(); }
+      }).catch(function () {});
+    }
+  }
+  function listaY(a) { return a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1]; }
 
   // ───── Comprobante: el carnet de La Banda ─────
   function primerNombre(n) {
@@ -1694,6 +1788,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
           if (banda.data && banda.tel === data.telefono && data.cumple && !banda.data.tieneCumple) { banda.data.tieneCumple = true; banda.data.cumpleHoy = enVentana(data.cumple, banda.data.diasCumple); }
           onPhoneChange();
           refreshClubCheck();
+          pintarFranja();
         })
         .catch(function (e) { err.textContent = e.message; err.hidden = false; btn.disabled = false; btn.textContent = '¡Me sumo!'; });
     };
@@ -2004,7 +2099,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       help.hidden = st !== 'cancel';
       help.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent('Hola! Tengo un problema con mi pedido, código ' + w.code + ' (' + w.name + ').');
       // Otros pedidos de este celular
-      var others = watches.filter(function (x) { return x.code !== w.code; });
+      var others = watches.filter(function (x) { return x.code !== w.code && x.state === 'wait'; });
       var box = $('rc-list');
       box.hidden = !others.length;
       box.textContent = '';
@@ -2090,9 +2185,9 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'].forEach(function (m, i) { mm.push('<option value="' + (i + 1) + '">' + m + '</option>'); });
       $('club-day').innerHTML = dd.join(''); $('club-month').innerHTML = mm.join('');
       refreshClubCheck();
-      // soypapina.com.ar/banda (o el link viejo /club) abre el formulario de La Banda
-      var qs = new URLSearchParams(window.location.search);
-      if (/^\/(club|banda)/.test(window.location.pathname) || qs.get('club') === '1' || qs.get('banda') === '1') openClub({});
+      // ?banda=1 abre el formulario de La Banda (soypapina.com.ar/banda es una página aparte)
+      if (new URLSearchParams(window.location.search).get('banda') === '1') openClub({});
+      pintarFranja();
     })();
     if (status !== 'exito' && watches.length) { paintWatch(); checkWatches(); }
     if (status === 'exito') showReceipt(pid);

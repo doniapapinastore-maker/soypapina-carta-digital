@@ -1,14 +1,14 @@
 [build]
   functions = "netlify/functions"
 
-# soypapina.com.ar/banda abre la carta con el formulario de La Banda de Papina
+# soypapina.com.ar/banda es la página de La Banda de Papina
 [[redirects]]
   from = "/banda"
-  to = "/index.html"
+  to = "/banda.html"
   status = 200
 
-# El link viejo /club sigue funcionando
+# El link viejo /club lleva a la misma página
 [[redirects]]
   from = "/club"
-  to = "/index.html"
+  to = "/banda.html"
   status = 200
