@@ -107,7 +107,7 @@ function payloadFor(entry, kind) {
   if (kind === "cancelled") {
     return { title: "Hubo un problema con tu pedido", body: "Escribinos por WhatsApp y lo resolvemos.", tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "cancelled", url: "/" };
   }
-  const gift = entry.gift ? ` 🎁 Incluye un regalo del Club: ${entry.gift.toLowerCase()}.` : "";
+  const gift = entry.gift ? ` 🎁 Y no te vayas sin lo tuyo: ${entry.gift.toLowerCase()}.` : "";
   return { title: many ? `¡Tus ${entry.count} pedidos están listos!` : "¡Tu pedido está listo!", body: `Pasá a retirar${many ? "los" : "lo"} por Doña Papina. Tu código: ${entry.code}.${gift}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
 }
 

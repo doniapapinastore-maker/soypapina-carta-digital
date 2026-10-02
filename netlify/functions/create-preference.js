@@ -29,6 +29,8 @@ const {
   pickupCodeFor,
   cleanPhone,
   clienteDelPedido,
+  parseElegidos,
+  elegidosTexto,
 } = require("./menu");
 
 const SITE_URL = process.env.SITE_URL || "https://soypapina.com.ar";
@@ -102,18 +104,20 @@ exports.handler = async (event) => {
     }
     const pricing = applyDiscount(norm.total, coupon ? coupon.percent : 0);
     const generalNotes = cleanText(customer.notes_general, 300);
-    // Teléfono (opcional) y Club
+    // Teléfono (opcional) y La Banda de Papina
     const phone = cleanPhone(customer.phone);
     const club = !!(phone && body.club);
     const promos = !!(club && body.promos);
     const cumple = club && /^\d{1,2}\/\d{1,2}$/.test(String(body.cumple || "")) ? String(body.cumple) : "";
+    // Regalos que eligió el cliente (el sheet valida que le correspondan antes de entregarlos)
+    const elegidos = phone ? parseElegidos(body.regalos) : {};
 
     // ───── 100% de descuento: no hay nada para cobrar, va directo a Thinkion ─────
     if (pricing.pay <= 0) {
       const orderId = freeOrderId();
       const code = groupWith || pickupCodeFor(orderId);
       // Ficha del cliente: frecuente / cortesía (si tarda o falla, el pedido sigue igual)
-      const cliente = phone ? await clienteDelPedido({ phone, name, club, promos, cumple, code, orderId, total: pricing.pay, lines: norm.lines }, 4000) : null;
+      const cliente = phone ? await clienteDelPedido({ phone, name, club, promos, cumple, elegidos, code, orderId, total: pricing.pay, lines: norm.lines }, 6000) : null;
       const order = buildThinkionOrder({
         phone,
         cliente,
@@ -148,6 +152,16 @@ exports.handler = async (event) => {
         grouped: !!groupWith,
         regalo: cliente && cliente.cortesia ? cliente.cortesia : "",
         club: !!(cliente && (cliente.socio || club)),
+        banda: cliente ? {
+          socio: !!cliente.socio,
+          pedidos: cliente.pedidos,
+          usados: cliente.usados,
+          cada: cliente.cada,
+          frecuenteDesde: cliente.frecuenteDesde,
+          sellosActivo: !!cliente.sellosActivo,
+          sellosOpciones: cliente.sellosOpciones || [],
+          regalos: cliente.regalos || [],
+        } : null,
         subtotal: pricing.subtotal,
         discount: pricing.discount,
         total: 0,
@@ -199,7 +213,11 @@ exports.handler = async (event) => {
       cart: compactCart(norm.lines),
     };
     if (groupWith) { metadata.group_with = groupWith; metadata.group_name = groupName; }
-    if (phone) { metadata.phone = phone; metadata.club = club; metadata.promos = promos; metadata.cumple = cumple; }
+    if (phone) {
+      metadata.phone = phone; metadata.club = club; metadata.promos = promos; metadata.cumple = cumple;
+      const reg = elegidosTexto(elegidos);
+      if (reg) metadata.regalos = reg;
+    }
     if (coupon) {
       metadata.coupon = coupon.code;
       metadata.discount_key = coupon.key;

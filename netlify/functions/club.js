@@ -1,7 +1,12 @@
 // netlify/functions/club.js
 //
-// "Sumate al Club Doña Papina": recibe el formulario de la carta (o de /club)
-// y lo guarda en la pestaña "Clientes" del sheet, a través del Apps Script de clientes.
+// La Banda de Papina. Dos usos:
+//  • { accion: "estado", telefono }  → qué regalos lo esperan y cómo van sus sellos
+//    (la carta lo pide cuando el cliente escribe su celu). Sin teléfono, devuelve solo
+//    los beneficios activos (para el formulario). Solo lee.
+//  • { nombre, telefono, cumple, mail, barrio, promos } → se suma a La Banda
+//    (formulario de la carta o de soypapina.com.ar/banda).
+// Todo pasa por el Apps Script de clientes, que escribe en la pestaña "Clientes" del sheet.
 //
 // Variables en Netlify: CLIENTES_URL (dirección del Apps Script) y CLIENTES_KEY (su clave).
 
@@ -13,40 +18,60 @@ const json = (statusCode, obj) => ({
   body: JSON.stringify(obj),
 });
 
+async function appsScript(payload, timeoutMs) {
+  const url = process.env.CLIENTES_URL, key = process.env.CLIENTES_KEY;
+  if (!url || !key) return { configError: true };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(Object.assign({ clave: key }, payload)),
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    return (await resp.json().catch(() => null)) || null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { ok: false, error: "Método no permitido" });
   let b = {};
   try { b = JSON.parse(event.body || "{}"); } catch (e) { return json(400, { ok: false, error: "Datos inválidos" }); }
 
+  // ───── Estado: qué regalos lo esperan ─────
+  if (b.accion === "estado") {
+    const telefono = String(b.telefono || "").replace(/\D/g, "");
+    try {
+      const d = await appsScript({ accion: "estado", telefono: telefono.length >= 8 && telefono.length <= 13 ? telefono : "" }, 7000);
+      if (!d || !d.ok) return json(502, { ok: false });
+      return json(200, d);
+    } catch (err) {
+      console.warn("Banda (estado):", err && err.message);
+      return json(502, { ok: false });
+    }
+  }
+
+  // ───── Sumarse a La Banda ─────
   const telefono = String(b.telefono || "").replace(/\D/g, "");
-  if (telefono.length < 8 || telefono.length > 13) return json(400, { ok: false, error: "Revisá el teléfono: tiene que tener entre 8 y 13 números." });
+  if (telefono.length < 8 || telefono.length > 13) return json(400, { ok: false, error: "Revisá el celu: tiene que tener entre 8 y 13 números." });
   const nombre = clean(b.nombre, 60);
-  if (!nombre) return json(400, { ok: false, error: "Escribí tu nombre." });
+  if (!nombre) return json(400, { ok: false, error: "Escribí tu nombre así Papina sabe quién sos." });
   const cumple = clean(b.cumple, 10);
-  if (cumple && !/^\d{1,2}\/\d{1,2}$/.test(cumple)) return json(400, { ok: false, error: "El cumpleaños va como día/mes, por ejemplo 23/07." });
+  if (cumple && !/^\d{1,2}\/\d{1,2}$/.test(cumple)) return json(400, { ok: false, error: "El cumple va como día/mes, por ejemplo 23/07." });
   const mail = clean(b.mail, 80);
-  if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return json(400, { ok: false, error: "Revisá el mail." });
+  if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return json(400, { ok: false, error: "Revisá el mail, parece que le falta algo." });
 
-  const url = process.env.CLIENTES_URL, key = process.env.CLIENTES_KEY;
-  if (!url || !key) return json(500, { ok: false, error: "El Club todavía no está configurado." });
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 9000);
   try {
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ clave: key, accion: "club", telefono, nombre, cumple, mail, barrio: clean(b.barrio, 60), promos: !!b.promos }),
-      redirect: "follow",
-      signal: controller.signal,
-    });
-    const d = await resp.json().catch(() => null);
+    const d = await appsScript({ accion: "club", telefono, nombre, cumple, mail, barrio: clean(b.barrio, 60), promos: !!b.promos }, 9000);
+    if (d && d.configError) return json(500, { ok: false, error: "La Banda todavía no está configurada." });
     if (!d || !d.ok) return json(502, { ok: false, error: "No pudimos guardar tus datos. Probá de nuevo en un rato." });
-    return json(200, { ok: true, nuevo: !!d.nuevo });
+    return json(200, { ok: true, nuevo: !!d.nuevo, bienvenidaEntregada: !!d.bienvenidaEntregada });
   } catch (err) {
-    console.error("Club:", err && err.message);
+    console.error("Banda:", err && err.message);
     return json(502, { ok: false, error: "No pudimos guardar tus datos. Probá de nuevo en un rato." });
-  } finally {
-    clearTimeout(timer);
   }
 };

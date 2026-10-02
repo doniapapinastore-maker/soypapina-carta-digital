@@ -460,6 +460,31 @@ function cleanPhone(v) {
   return d.length >= 8 && d.length <= 13 ? d : "";
 }
 
+// Regalos que eligió el cliente: { bienvenida: "Papas chicas", cumple: "Postre", sellos: "Coca-Cola 500" }.
+// Llega como objeto (desde la carta) o como texto "bienvenida=Papas chicas;sellos=Coca-Cola 500"
+// (así viaja en la metadata de Mercado Pago). El sheet vuelve a validar todo antes de entregar.
+const TIPOS_REGALO = ["bienvenida", "cumple", "sellos"];
+function parseElegidos(v) {
+  const out = {};
+  let src = v;
+  if (typeof v === "string") {
+    src = {};
+    v.split(";").forEach((par) => {
+      const i = par.indexOf("=");
+      if (i > 0) src[par.slice(0, i).trim()] = par.slice(i + 1);
+    });
+  }
+  if (!src || typeof src !== "object") return out;
+  TIPOS_REGALO.forEach((t) => {
+    const op = cleanText(src[t], 40).replace(/[;=]/g, " ").trim();
+    if (op) out[t] = op;
+  });
+  return out;
+}
+function elegidosTexto(e) {
+  return Object.keys(e || {}).map((t) => `${t}=${e[t]}`).join(";");
+}
+
 async function clienteDelPedido(o, timeoutMs) {
   const url = process.env.CLIENTES_URL, key = process.env.CLIENTES_KEY;
   const telefono = cleanPhone(o.phone);
@@ -473,6 +498,7 @@ async function clienteDelPedido(o, timeoutMs) {
       body: JSON.stringify({
         clave: key, accion: "pedido", telefono, nombre: cleanText(o.name, 60), club: !!o.club, promos: !!o.promos,
         cumple: cleanText(o.cumple, 5),
+        elegidos: parseElegidos(o.elegidos),
         codigo: String(o.code || ""), total: Number(o.total) || 0, pedido: String(o.orderId || ""),
         productos: (o.lines || []).map((l) => (CATALOG.products[l.key] || {}).code || (CATALOG.products[l.key] || {}).name || l.key),
       }),
@@ -643,5 +669,7 @@ exports.freeOrderId = freeOrderId;
 exports.pickupCodeFor = pickupCodeFor;
 exports.cleanPhone = cleanPhone;
 exports.clienteDelPedido = clienteDelPedido;
+exports.parseElegidos = parseElegidos;
+exports.elegidosTexto = elegidosTexto;
 exports.customerIdFor = customerIdFor;
 exports.refreshPrices = refreshPrices;
