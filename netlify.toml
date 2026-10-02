@@ -1,2 +1,8 @@
 [build]
   functions = "netlify/functions"
+
+# soypapina.com.ar/club abre la carta con el formulario del Club
+[[redirects]]
+  from = "/club"
+  to = "/index.html"
+  status = 200
