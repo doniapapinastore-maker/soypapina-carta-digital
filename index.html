@@ -1678,15 +1678,24 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     (ctx.items || []).forEach(function (n) { n = String(n || '').trim(); if (n && nombres.indexOf(n) === -1) nombres.push(n); });
 
     function cerrarBtn(texto) { var b = h('button', { type: 'button', class: 'go', text: texto || 'Listo' }); b.onclick = close; return h('div', { class: 'club-actions' }, [b]); }
+    var encId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);   // número único de esta respuesta
+    function enviarEncuesta(cuerpo, intento) {
+      return fetch(CLUB_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || !d.ok) throw new Error(); }); })
+        .catch(function (e) {
+          // Si el sheet tardó, casi siempre ya la guardó: se reintenta una vez con el mismo número (no se duplica)
+          if (intento) throw e;
+          return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { return enviarEncuesta(cuerpo, 1); });
+        });
+    }
     function mandar(datos, alTerminar, btn) {
       if (btn) { btn.disabled = true; btn.textContent = 'Mandando…'; }
       var cuerpo = {
-        accion: 'encuesta', canal: whatsapp ? 'whatsapp' : 'web', codigo: ctx.code || '', telefono: datos.telefono || ctx.phone || '',
+        accion: 'encuesta', id: encId, canal: whatsapp ? 'whatsapp' : 'web', codigo: ctx.code || '', telefono: datos.telefono || ctx.phone || '',
         nombre: ctx.name || loadCliente().name || '', resultado: datos.resultado, gusto: datos.gusto || '',
         problemas: datos.problemas || [], comentario: datos.comentario || '', productos: nombres
       };
-      fetch(CLUB_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
-        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || !d.ok) throw new Error(); }); })
+      enviarEncuesta(cuerpo, 0)
         .then(function () { if (ctx.code) encMarcar(ctx.code, 'respondida'); alTerminar(); })
         .catch(function () {
           var err = box.querySelector('.err') || box.appendChild(h('p', { class: 'err' }));
