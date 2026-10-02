@@ -1,6 +1,7 @@
 // netlify/functions/club.js
 //
-// La Banda de Papina. Tres usos:
+// La Banda de Papina. Cuatro usos:
+//  • { accion: "encuesta", ... } → respuesta de "¿Cómo nos fue?" (se guarda en la pestaña Encuestas).
 //  • GET ?pagina=1 → beneficios, fotos y novedades para soypapina.com.ar/banda (Netlify lo guarda 5 minutos).
 //  • { accion: "estado", telefono }  → qué regalos lo esperan y cómo van sus sellos
 //    (la carta lo pide cuando el cliente escribe su celu). Sin teléfono, devuelve solo
@@ -72,6 +73,27 @@ exports.handler = async (event) => {
       return json(200, d);
     } catch (err) {
       console.warn("Banda (estado):", err && err.message);
+      return json(502, { ok: false });
+    }
+  }
+
+  // ───── Encuesta "¿Cómo nos fue?" ─────
+  if (b.accion === "encuesta") {
+    const ok = ["bien", "regular", "mal"];
+    if (ok.indexOf(b.resultado) === -1) return json(400, { ok: false });
+    const lista = (v, n, max) => (Array.isArray(v) ? v : []).map((x) => clean(x, max)).filter(Boolean).slice(0, n);
+    try {
+      const d = await appsScript({
+        accion: "encuesta", resultado: b.resultado, canal: b.canal === "whatsapp" ? "whatsapp" : "web",
+        codigo: String(b.codigo || "").replace(/\D/g, "").slice(0, 6),
+        telefono: String(b.telefono || "").replace(/\D/g, "").slice(0, 13),
+        nombre: clean(b.nombre, 60), gusto: clean(b.gusto, 80), comentario: clean(b.comentario, 500),
+        problemas: lista(b.problemas, 8, 60), productos: lista(b.productos, 12, 60),
+      }, 9000);
+      if (!d || !d.ok) return json(502, { ok: false });
+      return json(200, { ok: true });
+    } catch (err) {
+      console.warn("Encuesta:", err && err.message);
       return json(502, { ok: false });
     }
   }

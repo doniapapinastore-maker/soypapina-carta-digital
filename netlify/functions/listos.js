@@ -155,9 +155,39 @@ async function sendPushes(store, entry) {
       continue;
     }
     if (entry.status === "cancelled") await store.delete(key);
-    else await store.setJSON(key, Object.assign({}, sub, { notifiedAt: entry.at })); // queda para el recordatorio
+    else {
+      await store.setJSON(key, Object.assign({}, sub, { notifiedAt: entry.at })); // queda para el recordatorio
+      // Encuesta "¿Cómo nos fue?": se manda una hora después (ver encuestasPendientes)
+      try { await store.setJSON(`e/${entry.at}-${entry.code}-${phone}`, { code: entry.code, name: entry.name, subscription: sub.subscription }); } catch (e) {}
+    }
   }
   return sent;
+}
+
+// ─── Encuesta "¿Cómo nos fue?" (una hora después de que el pedido estuvo listo) ───
+// Se revisa cada vez que el KDS hace su envío agrupado (cada 3 minutos): no suma consumo extra.
+const ENCUESTA_ESPERA_MS = 60 * 60 * 1000;
+const ENCUESTA_TOPE_MS = 4 * 60 * 60 * 1000;
+async function encuestasPendientes(store, now) {
+  if (!canPush()) return;
+  const { blobs } = await store.list({ prefix: "e/" });
+  let n = 0;
+  for (const b of blobs) {
+    const m = /^e\/(\d+)-/.exec(b.key);
+    const at = m ? Number(m[1]) : 0;
+    if (!at || now - at > ENCUESTA_TOPE_MS) { await store.delete(b.key); continue; }   // muy viejo: ya no se pregunta
+    if (now - at < ENCUESTA_ESPERA_MS || n >= 20) continue;
+    const e = await store.get(b.key, { type: "json" });
+    await store.delete(b.key);
+    if (!e || !e.subscription) continue;
+    try {
+      await push({ subscription: e.subscription }, {
+        title: "¿Cómo nos fue? 👀", body: "No nos ofendemos. Queremos saber la verdad 😏 (son 10 segundos)",
+        tag: `encuesta-${e.code}`, code: e.code, name: e.name, status: "encuesta", url: `/?encuesta=${e.code}`, vibrate: [200],
+      });
+      n++;
+    } catch (err) { console.warn("Encuesta:", err && (err.statusCode || err.message)); }
+  }
 }
 
 exports.handler = async (event) => {
@@ -251,6 +281,7 @@ exports.handler = async (event) => {
           };
           await store.setJSON(`l/${day}/${done}-${rec.order || Math.random().toString(36).slice(2, 7)}`, rec);
         }
+        try { await encuestasPendientes(store, now); } catch (e) { console.warn("Encuestas:", e && e.message); }
         const cfg = await store.get("cfg/paused", { type: "json" });
         return reply(200, { ok: true, paused: !!(cfg && cfg.paused) });
       }
