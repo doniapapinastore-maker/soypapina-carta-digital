@@ -85,7 +85,7 @@ exports.handler = async (event) => {
     await refreshPrices();
 
     if (await webPaused(event)) {
-      return json(503, { error: "Por el momento no estamos tomando pedidos online.", paused: true });
+      return json(503, { error: "Frenamos un ratito los pedidos por la web. Probá de nuevo en unos minutos.", paused: true });
     }
 
     // Si el cliente tiene otro pedido en preparación (de los últimos 30 minutos), van juntos

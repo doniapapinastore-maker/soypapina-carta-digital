@@ -102,13 +102,13 @@ const VIBRATE = [600, 200, 600, 200, 600, 200, 1200];
 function payloadFor(entry, kind) {
   const many = entry.count > 1;
   if (kind === "reminder") {
-    return { title: many ? `Tus ${entry.count} pedidos te esperan` : "Tu pedido te espera", body: `Ya está${many ? "n" : ""} listo${many ? "s" : ""} para retirar en Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
+    return { title: many ? `Tus ${entry.count} pedidos te siguen esperando 👀` : "Tu pedido te sigue esperando 👀", body: `Pasá por Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
   }
   if (kind === "cancelled") {
     return { title: "Hubo un problema con tu pedido", body: "Escribinos por WhatsApp y lo resolvemos.", tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "cancelled", url: "/" };
   }
   const gift = entry.gift ? ` 🎁 Y no te vayas sin lo tuyo: ${entry.gift.toLowerCase()}.` : "";
-  return { title: many ? `¡Tus ${entry.count} pedidos están listos!` : "¡Tu pedido está listo!", body: `Pasá a retirar${many ? "los" : "lo"} por Doña Papina. Tu código: ${entry.code}.${gift}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
+  return { title: many ? `¡Tus ${entry.count} pedidos están listos y calentitos!` : "¡Listo y calentito!", body: `Pasá a buscar${many ? "los" : "lo"} por Doña Papina. Tu código: ${entry.code}.${gift}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
 }
 
 // Suscripciones de este código y este cliente
