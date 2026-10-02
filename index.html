@@ -83,6 +83,16 @@ input, textarea { font-family: var(--f-body); }
 .bnd-b { flex: 0 0 auto; min-height: 42px; padding: 0 16px; border-radius: 999px; background: var(--red); color: var(--on-red);
   font-weight: 800; font-size: 14px; display: inline-flex; align-items: center; }
 .msg.is-info { color: var(--brown); }
+/* ───────── Encuesta "¿Cómo nos fue?" ───────── */
+.enc-card { position: relative; background: var(--paper); border: 2px solid var(--brown); border-radius: 16px; padding: 14px 44px 14px 16px; box-shadow: var(--shadow); }
+.enc-t { margin: 0; font-family: var(--f-display); font-size: 18px; line-height: 1.15; color: var(--red); }
+.enc-s { margin: 4px 0 10px; font-family: var(--f-hand); font-weight: 700; font-size: 19px; line-height: 1.05; }
+.enc-x { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent; font-size: 16px; color: var(--brown); cursor: pointer; }
+.enc-caras { display: flex; gap: 8px; }
+.enc-cara { flex: 1; min-height: 74px; border-radius: 14px; border: 2px solid var(--brown); background: #fff; color: var(--ink); font-weight: 800; font-size: 13px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
+.enc-cara:active { transform: scale(0.97); }
+.enc-emoji { font-size: 30px; line-height: 1; }
+.enc-sheet .club-box textarea, .enc-sheet .club-box input { width: 100%; }
 
 .notice {
   display: flex; align-items: flex-start; gap: 10px; justify-content: space-between;
@@ -541,6 +551,8 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     <span class="bnd-b" id="bnd-b">Conocé la banda</span>
   </a>
 
+  <div class="enc-card" id="enc-card" role="region" aria-label="¿Cómo nos fue?" hidden></div>
+
   <div class="notice" id="notice" role="status" hidden>
     <span id="notice-text"></span>
     <button type="button" id="notice-x" aria-label="Cerrar aviso">×</button>
@@ -720,6 +732,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     <div class="rc-banda" id="rc-banda" hidden></div>
     <p class="rc-freq" id="rc-freq" hidden></p>
     <button class="rc-club" type="button" id="rc-club" hidden>🤝 ¿Te sumás a la banda?</button>
+    <button class="rc-club" type="button" id="rc-enc" hidden>👀 ¿Cómo nos fue? (cuando termines de comer)</button>
     <div class="rc-pick">📍 <b>Solo retiro en el local</b> · Sin envíos</div>
 
     <details class="rc-more" id="rc-more">
@@ -1349,6 +1362,8 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       }
     }, true);
     $('rc-again').focus();
+    if (code) encAnotar({ code: String(code), at: (pending && pending.orderedAt) || Date.now(), items: items.map(function (i) { return i.name; }),
+                          phone: (pending && pending.phone) || '', name: name });
   }
 
   // ───── aviso de "pedido listo" ─────
@@ -1369,7 +1384,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     // Cuando llega la notificación, el aviso le pasa la novedad a la página abierta en el acto
     navigator.serviceWorker.addEventListener('message', function (e) {
       var d = e.data || {};
-      if (d.type !== 'pedido' || !d.code) return;
+      if (d.type !== 'pedido' || !d.code || d.status === 'encuesta') return;
       refresh();
       var w = findWatch(d.code);
       if (w && w.state === 'wait') setState(w, d.status === 'cancelled' ? 'cancel' : 'ready');
@@ -1595,6 +1610,156 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     if (btn.disabled) return;
     banda.picks[t] = op;
     refreshClubCheck();
+  }
+
+  // ───── Encuesta "¿Cómo nos fue?" ─────
+  // Cada pedido queda anotado en este celular. Más de una hora después (y hasta 3 días) aparece la
+  // tarjeta arriba de la carta. También se abre desde el comprobante, la notificación o /como-nos-fue.
+  var ENC_KEY = 'dp-encuestas';
+  var ENC_GENERICO = ['La comida', 'La atención', 'La rapidez', 'El precio'];
+  var ENC_PROBLEMAS = ['Llegó frío', 'Faltó algo', 'Tardó mucho', 'No me gustó el sabor', 'Llegó mal armado', 'Otra cosa'];
+  function encLeer() { try { return JSON.parse(localStorage.getItem(ENC_KEY) || '[]') || []; } catch (e) { return []; } }
+  function encGuardar(l) { try { localStorage.setItem(ENC_KEY, JSON.stringify(l.slice(-6))); } catch (e) {} }
+  function encAnotar(p) {
+    var l = encLeer().filter(function (x) { return x.code !== p.code; });
+    l.push({ code: p.code, at: p.at, items: p.items || [], phone: p.phone || '', name: p.name || '', estado: '' });
+    encGuardar(l);
+  }
+  function encBuscar(code) { var l = encLeer(); for (var i = 0; i < l.length; i++) if (l[i].code === String(code)) return l[i]; return null; }
+  function encMarcar(code, estado) { var l = encLeer(); l.forEach(function (x) { if (x.code === code) x.estado = estado; }); encGuardar(l); }
+  function encPendiente() {
+    var now = Date.now();
+    var l = encLeer().filter(function (x) { return !x.estado && now - x.at > 75 * 60000 && now - x.at < 3 * 86400000; });
+    return l.length ? l[l.length - 1] : null;
+  }
+  function encCuando(at) {
+    var d = new Date(at), hoy = new Date(), ayer = new Date(Date.now() - 86400000);
+    if (d.toDateString() === hoy.toDateString()) return 'de hoy';
+    if (d.toDateString() === ayer.toDateString()) return 'de ayer';
+    return 'del ' + d.getDate() + '/' + (d.getMonth() + 1);
+  }
+
+  var CARAS = [['bien', '😍', 'Bárbaro'], ['regular', '😐', 'Más o menos'], ['mal', '😬', 'Mal']];
+  function encCaras(alElegir) {
+    return h('div', { class: 'enc-caras' }, CARAS.map(function (c) {
+      var b = h('button', { type: 'button', class: 'enc-cara' }, [h('span', { class: 'enc-emoji', text: c[1] }), h('span', { text: c[2] })]);
+      b.onclick = function () { alElegir(c[0]); };
+      return b;
+    }));
+  }
+
+  // Tarjeta arriba de la carta, la próxima vez que entra
+  function pintarEncCard() {
+    var box = $('enc-card');
+    if (!box) return;
+    var p = encPendiente();
+    box.textContent = '';
+    box.hidden = !p;
+    if (!p) return;
+    var cerrar = h('button', { type: 'button', class: 'enc-x', 'aria-label': 'Ahora no', text: '✕' });
+    cerrar.onclick = function () { encMarcar(p.code, 'descartada'); pintarEncCard(); };
+    box.appendChild(cerrar);
+    box.appendChild(h('p', { class: 'enc-t', text: '¿Cómo nos fue con tu pedido ' + encCuando(p.at) + '? 👀' }));
+    box.appendChild(h('p', { class: 'enc-s', text: 'No nos ofendemos. Queremos saber la verdad 😏' }));
+    box.appendChild(encCaras(function (r) { abrirEncuesta(p, r); }));
+  }
+
+  function abrirEncuesta(ctx, inicial) {
+    ctx = ctx || {};
+    var whatsapp = ctx.canal === 'whatsapp';
+    var old = document.querySelector('.enc-sheet'); if (old) old.remove();
+    var sheet = h('div', { class: 'club-sheet enc-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': '¿Cómo nos fue?' });
+    var box = h('div', { class: 'club-box' });
+    sheet.appendChild(box);
+    document.body.appendChild(sheet);
+    var close = function () { sheet.remove(); pintarEncCard(); };
+    sheet.addEventListener('click', function (e) { if (e.target === sheet) close(); });
+    var nombres = [];
+    (ctx.items || []).forEach(function (n) { n = String(n || '').trim(); if (n && nombres.indexOf(n) === -1) nombres.push(n); });
+
+    function cerrarBtn(texto) { var b = h('button', { type: 'button', class: 'go', text: texto || 'Listo' }); b.onclick = close; return h('div', { class: 'club-actions' }, [b]); }
+    function mandar(datos, alTerminar, btn) {
+      if (btn) { btn.disabled = true; btn.textContent = 'Mandando…'; }
+      var cuerpo = {
+        accion: 'encuesta', canal: whatsapp ? 'whatsapp' : 'web', codigo: ctx.code || '', telefono: datos.telefono || ctx.phone || '',
+        nombre: ctx.name || loadCliente().name || '', resultado: datos.resultado, gusto: datos.gusto || '',
+        problemas: datos.problemas || [], comentario: datos.comentario || '', productos: nombres
+      };
+      fetch(CLUB_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || !d.ok) throw new Error(); }); })
+        .then(function () { if (ctx.code) encMarcar(ctx.code, 'respondida'); alTerminar(); })
+        .catch(function () {
+          var err = box.querySelector('.err') || box.appendChild(h('p', { class: 'err' }));
+          err.textContent = 'No pudimos mandarla. Probá de nuevo en un ratito.';
+          if (btn) { btn.disabled = false; btn.textContent = btn.getAttribute('data-t'); }
+        });
+    }
+    function pasoCaras() {
+      box.textContent = '';
+      box.appendChild(h('h3', { text: '¿Cómo nos fue?' }));
+      box.appendChild(h('p', { class: 'bc-lead', text: 'No nos ofendemos. Queremos saber la verdad 😏' }));
+      box.appendChild(encCaras(elegir));
+    }
+    function elegir(r) { if (r === 'bien') pasoBien(); else pasoMal(r); }
+    function pasoBien() {
+      box.textContent = '';
+      box.appendChild(h('h3', { text: '❤️ ¡Nos alegra una banda!' }));
+      box.appendChild(h('p', { class: 'bc-lead', text: '¿Qué fue lo que más te gustó?' }));
+      var opciones = nombres.length ? nombres.slice(0, 8) : ENC_GENERICO;
+      box.appendChild(h('div', { class: 'bp-opts' }, opciones.map(function (o) {
+        var b = h('button', { type: 'button', class: 'bp-opt', text: o });
+        b.onclick = function () { mandar({ resultado: 'bien', gusto: o }, graciasBien); };
+        return b;
+      })));
+      var saltear = h('button', { type: 'button', class: 'bp-pass', text: 'Saltear' });
+      saltear.onclick = function () { mandar({ resultado: 'bien' }, graciasBien); };
+      box.appendChild(saltear);
+    }
+    function graciasBien() {
+      box.textContent = '';
+      box.appendChild(h('h3', { text: '¡Gracias! 🙌' }));
+      box.appendChild(h('p', { class: 'bc-lead', text: 'Papina ya está sonriendo.' }));
+      if (!isClubMember()) box.appendChild(h('p', null, ['¿Todavía no sos de La Banda? Pedí directo y tus pedidos suman premios. ', h('a', { href: '/banda', text: 'Conocé la banda' })]));
+      box.appendChild(cerrarBtn());
+    }
+    function pasoMal(r) {
+      box.textContent = '';
+      box.appendChild(h('h3', { text: r === 'mal' ? '👀 Uh... eso no era la idea.' : '😐 Mmm... casi, pero no.' }));
+      box.appendChild(h('p', { class: 'bc-lead', text: '¿Qué pasó?' }));
+      var elegidos = [];
+      var lista = whatsapp ? ENC_PROBLEMAS.slice(0, 5).concat(['La atención', 'Otra cosa']) : ENC_PROBLEMAS;
+      var btn = h('button', { type: 'button', class: 'go', text: 'Mandar', 'data-t': 'Mandar', disabled: true });
+      var texto = h('textarea', { class: 'field', rows: '3', maxlength: '500', placeholder: 'Contanos más (opcional)' });
+      var actualizar = function () { btn.disabled = !elegidos.length && !texto.value.trim(); };
+      box.appendChild(h('div', { class: 'bp-opts' }, lista.map(function (o) {
+        var b = h('button', { type: 'button', class: 'bp-opt', 'aria-pressed': 'false', text: o });
+        b.onclick = function () {
+          var i = elegidos.indexOf(o);
+          if (i === -1) elegidos.push(o); else elegidos.splice(i, 1);
+          b.setAttribute('aria-pressed', i === -1 ? 'true' : 'false');
+          actualizar();
+        };
+        return b;
+      })));
+      box.appendChild(texto);
+      texto.addEventListener('input', actualizar);
+      var cel = null;
+      if (!ctx.phone) {
+        cel = h('input', { class: 'field', type: 'tel', inputmode: 'tel', maxlength: '20', placeholder: 'Tu celu (opcional, por si queremos escribirte)' });
+        box.appendChild(cel);
+      }
+      btn.onclick = function () {
+        mandar({ resultado: r, problemas: elegidos, comentario: texto.value.trim(), telefono: cel ? cel.value.replace(/\D/g, '') : '' }, graciasMal, btn);
+      };
+      box.appendChild(h('div', { class: 'club-actions' }, [btn]));
+    }
+    function graciasMal() {
+      box.textContent = '';
+      box.appendChild(h('h3', { text: 'Gracias por la sinceridad 🙏' }));
+      box.appendChild(h('p', { class: 'bc-lead', text: 'Papina ya se enteró y se lo toma en serio.' }));
+      box.appendChild(cerrarBtn());
+    }
+    if (inicial) elegir(inicial); else pasoCaras();
   }
 
   // ───── Franja de La Banda en la carta ─────
@@ -2095,6 +2260,9 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       $('rc-bell').disabled = false;
       $('rc-bell').textContent = '🔔 Activar notificaciones';
       bellNote('');
+      var enc = $('rc-enc');
+      enc.hidden = st !== 'ready';
+      enc.onclick = function () { abrirEncuesta(encBuscar(w.code) || { code: w.code, items: [], name: w.name }); };
       var help = $('rc-help');
       help.hidden = st !== 'cancel';
       help.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent('Hola! Tengo un problema con mi pedido, código ' + w.code + ' (' + w.name + ').');
@@ -2188,6 +2356,14 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       // ?banda=1 abre el formulario de La Banda (soypapina.com.ar/banda es una página aparte)
       if (new URLSearchParams(window.location.search).get('banda') === '1') openClub({});
       pintarFranja();
+      pintarEncCard();
+      // ?encuesta=CODIGO (desde la notificación) o ?encuesta=whatsapp (desde soypapina.com.ar/como-nos-fue)
+      var encQ = new URLSearchParams(window.location.search).get('encuesta');
+      if (encQ) {
+        try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
+        if (encQ === 'whatsapp') abrirEncuesta({ canal: 'whatsapp', code: '', items: [], phone: '', name: '' });
+        else abrirEncuesta(encBuscar(encQ) || { code: String(encQ).replace(/\D/g, '').slice(0, 6), items: [] });
+      }
     })();
     if (status !== 'exito' && watches.length) { paintWatch(); checkWatches(); }
     if (status === 'exito') showReceipt(pid);

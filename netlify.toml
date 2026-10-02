@@ -12,3 +12,9 @@
   from = "/club"
   to = "/banda.html"
   status = 200
+
+# soypapina.com.ar/como-nos-fue abre la encuesta (para mandar a los que piden por WhatsApp)
+[[redirects]]
+  from = "/como-nos-fue"
+  to = "/?encuesta=whatsapp"
+  status = 302
