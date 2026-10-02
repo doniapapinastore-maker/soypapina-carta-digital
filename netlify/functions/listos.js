@@ -107,7 +107,8 @@ function payloadFor(entry, kind) {
   if (kind === "cancelled") {
     return { title: "Hubo un problema con tu pedido", body: "Escribinos por WhatsApp y lo resolvemos.", tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "cancelled", url: "/" };
   }
-  return { title: many ? `¡Tus ${entry.count} pedidos están listos!` : "¡Tu pedido está listo!", body: `Pasá a retirar${many ? "los" : "lo"} por Doña Papina. Tu código: ${entry.code}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
+  const gift = entry.gift ? ` 🎁 Incluye un regalo del Club: ${entry.gift.toLowerCase()}.` : "";
+  return { title: many ? `¡Tus ${entry.count} pedidos están listos!` : "¡Tu pedido está listo!", body: `Pasá a retirar${many ? "los" : "lo"} por Doña Papina. Tu código: ${entry.code}.${gift}`, tag: `pedido-${entry.code}`, code: entry.code, name: entry.name, status: "ready", url: "/" };
 }
 
 // Suscripciones de este código y este cliente
@@ -272,6 +273,7 @@ exports.handler = async (event) => {
         name: normName(b.name),
         code: digits(b.code, 6),
         count: Math.max(1, Math.min(9, Number(b.count) || 1)),
+        gift: clean(b.gift, 120),
         channel: clean(b.channel, 30),
         status: b.status === "cancelled" ? "cancelled" : (b.status === "reminder" ? "reminder" : "ready"),
         at: now,
@@ -286,7 +288,7 @@ exports.handler = async (event) => {
         const k = `k/${entry.code}/${entry.name.replace(/[^A-Z0-9]+/g, "_").slice(0, 40)}`;
         const prev = await store.get(k, { type: "json" }).catch(() => null);
         const hist = (prev && Array.isArray(prev.list) ? prev.list : []).filter((x) => now - x.at < KEEP_MS);
-        hist.push({ name: entry.name, at: now, status: entry.status });
+        hist.push({ name: entry.name, at: now, status: entry.status, gift: entry.gift || "" });
         await store.setJSON(k, { at: now, list: hist.slice(-5) });
       }
       let pushes = 0;
