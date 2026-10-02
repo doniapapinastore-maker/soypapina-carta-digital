@@ -327,18 +327,54 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
 .club-check { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--ink); cursor: pointer; }
 .club-check input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--red); flex: 0 0 auto; }
 .club-check.sub { font-weight: 600; font-size: 12px; color: var(--brown); margin-left: 26px; margin-top: 4px; }
+.club-hint { margin: 4px 0 0 26px; font-size: 12px; font-weight: 800; color: var(--green); line-height: 1.3; }
+
+/* ───────── La Banda de Papina ───────── */
+/* La franja de arriba (rojo y dorado, como un toldo) identifica todo lo que es de La Banda */
+.bp { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+.bp-wait { margin: 0; font-size: 12px; font-weight: 700; color: var(--brown); }
+.bp-gift, .rc-banda, .club-box { position: relative; overflow: hidden; }
+.bp-gift::before, .rc-banda::before, .club-box::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 7px; background: repeating-linear-gradient(90deg, var(--red) 0 16px, var(--gold) 16px 32px); }
+.bp-gift { border: 2px solid var(--brown); border-radius: 14px; background: var(--paper); padding: 15px 12px 10px; box-shadow: var(--shadow); }
+.bp-t { margin: 0 0 4px; font-family: var(--f-display); font-weight: 400; font-size: 16px; line-height: 1.2; color: var(--red); }
+.bp-s { margin: 0 0 8px; font-family: var(--f-hand); font-weight: 700; font-size: 20px; line-height: 1; color: var(--ink); }
+.bp-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.bp-opt { min-height: 40px; padding: 6px 13px; border-radius: 999px; border: 2px solid var(--brown); background: #fff; color: var(--ink); font-weight: 800; font-size: 13px; cursor: pointer; }
+.bp-opt[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: var(--cream); }
+.bp-opt[aria-pressed="true"]::before { content: '✓ '; }
+.bp-opt:disabled { opacity: 0.5; cursor: not-allowed; border-style: dashed; }
+.bp-opt small { margin-left: 5px; font-size: 10.5px; font-weight: 700; }
+.bp-pass { display: block; margin-top: 8px; padding: 4px 0; background: none; border: 0; font-size: 12.5px; font-weight: 700; color: var(--brown); text-decoration: underline; text-align: left; cursor: pointer; }
+.bp-pass[aria-pressed="true"] { color: var(--red); text-decoration: none; }
+.bp-pass[aria-pressed="true"]::before { content: '✓ '; }
 .rc-gift { width: 100%; border-radius: 12px; padding: 10px 12px; background: #FFF1C9; border: 2px dashed var(--gold); font-weight: 800; font-size: 14px; text-align: left; }
+.rc-banda { width: 100%; border: 2px solid var(--brown); border-radius: 14px; background: var(--paper); padding: 17px 14px 12px; text-align: left; box-shadow: var(--shadow); }
+.rc-banda .bc-name { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 19px; line-height: 1.1; color: var(--red); }
+.rc-banda .bc-who { margin: 2px 0 0; font-family: var(--f-hand); font-weight: 700; font-size: 22px; line-height: 1.05; color: var(--ink); }
+.rc-banda .bc-freq { margin: 8px 0 0; font-size: 13.5px; font-weight: 800; color: var(--green); line-height: 1.3; }
+.bc-prog { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(150, 96, 58, 0.45); }
+.rc-banda .bc-frase { margin: 0 0 8px; font-family: var(--f-hand); font-weight: 700; font-size: 23px; line-height: 1; color: var(--red); }
+.bc-dots { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.bc-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px dashed rgba(150, 96, 58, 0.6); display: grid; place-items: center; font-family: var(--f-display); font-size: 14px; color: transparent; }
+.bc-dot.on { border: 2px solid var(--red); background: var(--red); color: var(--on-red); transform: rotate(-12deg); }
+.bc-dot.on:nth-child(even) { transform: rotate(9deg); }
+.rc-banda .bc-det { margin: 0; font-size: 12.5px; font-weight: 700; line-height: 1.35; color: var(--brown); }
+.rc .rc-freq { width: 100%; margin: 0; text-align: center; font-size: 14px; font-weight: 800; color: var(--green); }
 .rc-club { width: 100%; min-height: 44px; border-radius: 10px; border: 2px solid var(--green); background: #fff; color: var(--green); font-weight: 800; font-size: 14px; cursor: pointer; }
 .club-sheet { position: fixed; inset: 0; z-index: 450; background: rgba(51, 32, 15, 0.6); display: flex; align-items: flex-start; justify-content: center; padding: calc(env(safe-area-inset-top, 0px) + 14px) 12px 12px; overflow-y: auto; }
-.club-box { width: 100%; max-width: 420px; background: var(--paper); border: 2px solid var(--brown); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-.club-box h3 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 22px; }
+.club-box { width: 100%; max-width: 420px; background: var(--paper); border: 2px solid var(--brown); border-radius: 16px; padding: 22px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.club-box h3 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 26px; line-height: 1.05; color: var(--red); }
 .club-box p { margin: 0; font-size: 13px; line-height: 1.35; color: var(--ink); }
-.club-box ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+.club-box p.bc-lead { font-family: var(--f-hand); font-weight: 700; font-size: 21px; line-height: 1.1; }
+.club-box .cl-ben-t { font-size: 12.5px; font-weight: 800; color: var(--brown); }
+.club-box ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.club-box li { display: flex; gap: 8px; align-items: flex-start; background: #fff; border: 1px solid rgba(150, 96, 58, 0.35); border-radius: 10px; padding: 8px 10px; font-size: 13px; line-height: 1.35; }
+.club-box li i { font-style: normal; flex: 0 0 auto; }
+.club-box li b { color: var(--red); }
 .club-box label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 800; letter-spacing: 0.4px; color: var(--brown); }
 .club-box .row2 { display: flex; gap: 8px; }
 .club-box .row2 select { flex: 1; }
 .club-box .err { color: var(--red); font-size: 13px; font-weight: 700; }
-.club-box .ok { color: var(--green); font-size: 15px; font-weight: 800; text-align: center; }
 .club-actions { display: flex; gap: 8px; }
 .club-actions button { flex: 1; min-height: 46px; border-radius: 10px; font-weight: 800; font-size: 14px; cursor: pointer; }
 .club-actions .go { background: var(--red); color: var(--on-red); border: 0; }
@@ -557,16 +593,18 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
         <div class="lbl">
           <span id="phone-lbl">TELÉFONO (OPCIONAL)</span>
           <input class="field" id="phone" type="tel" inputmode="tel" autocomplete="off" maxlength="20" placeholder="Ej: 11 5555 1234" aria-labelledby="phone-lbl" aria-describedby="err-phone">
-          <p class="phone-hint">Dejalo y te avisamos si pasa algo con tu pedido. Además, sumás pedidos para tus beneficios del Club. Lo usamos solo para eso.</p>
+          <p class="phone-hint">Dejá tu celu y te avisamos si pasa algo con tu pedido. Si sos de la banda, además Papina te reconoce y tus pedidos suman. Lo usamos solo para eso.</p>
           <p class="msg" id="err-phone" hidden>Revisá el teléfono: tiene que tener entre 8 y 13 números.</p>
-          <label class="club-check" id="club-check" hidden><input type="checkbox" id="club-join"> <span>🎁 Sumarme al Club Doña Papina (beneficios de bienvenida, cumpleaños y por pedidos)</span></label>
+          <label class="club-check" id="club-check" hidden><input type="checkbox" id="club-join"> <span>🤝 Quiero ser de La Banda de Papina (es gratis y tiene sus premios)</span></label>
+          <p class="club-hint" id="club-hint" hidden>Sumándote ahora, este pedido ya viene con tu regalo de bienvenida 🎁</p>
           <div id="club-promos-row" hidden>
-            <div class="club-check sub" style="cursor:default">🎂 Tu cumple (opcional, para tu regalo):
+            <div class="club-check sub" style="cursor:default"><span id="club-cumple-l">🎂 Tu cumple (opcional):</span>
               <select class="field" id="club-day" style="width:auto;padding:4px 6px"></select>
               <select class="field" id="club-month" style="width:auto;padding:4px 6px"></select>
             </div>
-            <label class="club-check sub"><input type="checkbox" id="club-promos"> <span>Quiero recibir promociones (opcional)</span></label>
+            <label class="club-check sub"><input type="checkbox" id="club-promos"> <span>Quiero que Papina me cuente sus promos (opcional)</span></label>
           </div>
+          <div class="bp" id="banda-pick" hidden></div>
         </div>
 
         <div id="lines-box"></div>
@@ -660,7 +698,9 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     </div>
 
     <div class="rc-gift" id="rc-gift" hidden></div>
-    <button class="rc-club" type="button" id="rc-club" hidden>🎁 Sumate al Club Doña Papina</button>
+    <div class="rc-banda" id="rc-banda" hidden></div>
+    <p class="rc-freq" id="rc-freq" hidden></p>
+    <button class="rc-club" type="button" id="rc-club" hidden>🤝 ¿Te sumás a la banda?</button>
     <div class="rc-pick">📍 <b>Solo retiro en el local</b> · Sin envíos</div>
 
     <details class="rc-more" id="rc-more">
@@ -975,6 +1015,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
   }
   function isFree() { return state.lines.length > 0 && !!state.coupon && pricing().pay <= 0; }
   function renderCart() {
+    if (state.lines.length && banda.tel !== $('phone').value.replace(/\D/g, '')) onPhoneChange();
     var box = $('lines-box');
     box.textContent = '';
     if (!state.lines.length || !state.menu) {
@@ -1112,10 +1153,17 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       })
     };
     if (state.coupon) payload.coupon = state.coupon.code;
-    if (phone && $('club-join').checked) {
+    if (phone && $('club-join').checked && !esSocio()) {
       payload.club = true; payload.promos = $('club-promos').checked;
       if ($('club-day').value && $('club-month').value) { payload.cumple = $('club-day').value + '/' + $('club-month').value; saveCliente({ cumple: payload.cumple }); }
     }
+    // Regalos de La Banda que eligió (lo que no eligió queda guardado para la próxima)
+    var elegidos = {}, nombresRegalo = [];
+    if (phone && banda.tel === phone) {
+      regalosPendientes().forEach(function (t) { if (banda.picks[t]) { elegidos[t] = banda.picks[t]; nombresRegalo.push(banda.picks[t]); } });
+      if (nombresRegalo.length) payload.regalos = elegidos;
+    }
+    var prevision = phone ? prevBanda(phone, elegidos, !!payload.club) : null;
     // ¿Este celular tiene otro pedido en preparación de los últimos 30 minutos? Entonces van juntos
     // (aunque el cliente haya escrito el nombre distinto).
     var group = groupCandidate();
@@ -1130,7 +1178,8 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
           var pending = {
             name: name, notes: notes, total: d.total, subtotal: d.subtotal != null ? d.subtotal : total(),
             code: d.pickup_code || (group ? group.code : ''), grouped: !!(d.grouped || group), orderedAt: Date.now(),
-            regalo: d.regalo || '', phone: phone, club: !!(d.club || payload.club),
+            regalo: d.free ? (d.regalo || '') : nombresRegalo.join(' + '), phone: phone, club: !!(d.club || payload.club),
+            banda: d.banda || prevision, tieneCumple: !!((banda.data && banda.tel === phone && banda.data.tieneCumple) || payload.cumple),
             discount: state.coupon && d.discount > 0 ? { name: state.coupon.name, amount: d.discount, code: state.coupon.code } : null,
             items: state.lines.map(function (l) { var t = describeText(l); return { name: ALL[l.key].name, detail: t.detail, drink: t.drink, note: t.note }; })
           };
@@ -1202,12 +1251,15 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     if (code) $('rc-code').textContent = code;
     var regalo = (pending && pending.regalo) || '';
     $('rc-gift').hidden = !regalo;
-    if (regalo) $('rc-gift').textContent = '🎁 Este pedido tiene un regalo del Club: ' + regalo;
-    if (pending && pending.club) markClubMember();
-    // Si no es del Club: "Sumate". Si es del Club pero no sabemos su cumple: "Contanos cuándo es tu cumple".
-    var needCumple = isClubMember() && !loadCliente().cumple;
-    $('rc-club').hidden = isClubMember() && !needCumple;
-    $('rc-club').textContent = needCumple ? '🎂 Contanos cuándo es tu cumple y te regalamos algo' : '🎁 Sumate al Club Doña Papina';
+    if (regalo) $('rc-gift').textContent = '🎁 Como sos de la banda, este pedido viene con algo extra: ' + regalo + '.';
+    if (pending && pending.club) markClubMember(true);
+    var socioRc = !!(pending && pending.club) || isClubMember();
+    pintarBandaRecibo(pending, name, socioRc);
+    // Si no es de La Banda: "¿Te sumás?". Si es de La Banda pero no sabemos su cumple (y el regalo de cumple está activo): "Contanos tu cumple".
+    var benRc = (beneficiosGuardados() || {}).beneficios || null;
+    var needCumple = socioRc && !(pending && pending.tieneCumple) && !loadCliente().cumple && !(benRc && !benRc.cumple);
+    $('rc-club').hidden = socioRc && !needCumple;
+    $('rc-club').textContent = needCumple ? '🎂 Contanos tu cumple, Papina tiene algo para ese día' : '🤝 ¿Te sumás a la banda?';
     $('rc-club').onclick = function () { openClub({ name: name, phone: (pending && pending.phone) || loadCliente().phone || '' }); };
     // El número largo ya no se muestra en los pedidos sin pago: el código lo reemplaza
     $('rc-id-box').hidden = free && !!code;
@@ -1222,6 +1274,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       if (i.note) lines.push('   Obs: ' + i.note);
     });
     if (notes) lines.push('Obs. generales: ' + notes);
+    if (regalo) lines.push('🎁 Regalo de la banda: ' + regalo);
     lines.push('');
     if (disc) { lines.push('Subtotal: ' + money(sub)); lines.push('🏷️ ' + disc.name + ': −' + money(disc.amount)); }
     if (tot != null) lines.push('💰 ' + (free ? 'Total: ' : 'Total pagado: ') + money(tot));
@@ -1344,18 +1397,220 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
   }
 
 
-  // ───── Club Doña Papina ─────
+  // ───── La Banda de Papina ─────
   var CLUB_URL = '/.netlify/functions/club';
   function loadCliente() { try { return JSON.parse(localStorage.getItem('dp-cliente') || '{}') || {}; } catch (e) { return {}; } }
   function saveCliente(c) { try { var o = loadCliente(); if (c.name) o.name = c.name; if (c.phone) o.phone = c.phone; if (c.cumple) o.cumple = c.cumple; localStorage.setItem('dp-cliente', JSON.stringify(o)); } catch (e) {} }
   function isClubMember() { return !!loadCliente().club; }
-  function markClubMember() { try { var o = loadCliente(); o.club = true; localStorage.setItem('dp-cliente', JSON.stringify(o)); } catch (e) {} }
+  function markClubMember(on) { try { var o = loadCliente(); o.club = on !== false; localStorage.setItem('dp-cliente', JSON.stringify(o)); } catch (e) {} }
+
+  var EMOJI_REGALO = { bienvenida: '🎁', cumple: '🎂', sellos: '🏅' };
+  // Lo que sabemos del celu escrito en el pedido: qué regalos lo esperan y cómo van sus sellos.
+  // Se consulta una sola vez por celu, y solo cuando ya hay algo en el pedido (así se gasta poco).
+  var banda = { tel: '', data: null, loading: false, picks: {}, timer: null };
+
+  // Los beneficios activos quedan guardados 10 minutos (para el formulario y el comprobante)
+  function guardarBeneficios(d) { try { sessionStorage.setItem('dp-banda-ben', JSON.stringify({ at: Date.now(), d: d })); } catch (e) {} }
+  function beneficiosGuardados() { try { var x = JSON.parse(sessionStorage.getItem('dp-banda-ben') || 'null'); return x && Date.now() - x.at < 600000 ? x.d : null; } catch (e) { return null; } }
+
+  function pedirEstado(tel) {
+    return fetch(CLUB_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'estado', telefono: tel || '' }) })
+      .then(function (r) { return r.json().catch(function () { return null; }); })
+      .then(function (d) {
+        if (!d || !d.ok) return null;
+        guardarBeneficios({ beneficios: d.beneficios, cada: d.cada, diasCumple: d.diasCumple, frecuenteDesde: d.frecuenteDesde });
+        return d;
+      })
+      .catch(function () { return null; });
+  }
+
+  function esSocio() { return banda.data ? !!banda.data.socio : isClubMember(); }
+
+  function onPhoneChange() {
+    var ph = $('phone').value.replace(/\D/g, '');
+    var valido = ph.length >= 8 && ph.length <= 13;
+    clearTimeout(banda.timer);
+    if (!valido || !state.lines.length) {
+      banda.tel = ''; banda.data = null; banda.loading = false; banda.picks = {};
+      refreshClubCheck();
+      return;
+    }
+    if (ph === banda.tel) { refreshClubCheck(); return; }
+    banda.tel = ph; banda.data = null; banda.picks = {}; banda.loading = true;
+    refreshClubCheck();
+    banda.timer = setTimeout(function () {
+      pedirEstado(ph).then(function (d) {
+        if (banda.tel !== ph) return;
+        banda.loading = false; banda.data = d;
+        // Si es el celu de este teléfono, se actualiza si es de La Banda o no
+        if (d && loadCliente().phone === ph) markClubMember(!!d.socio);
+        refreshClubCheck();
+      });
+    }, 600);
+  }
+
+  // ¿El cumple ("d/m") cae dentro de ±dias de hoy?
+  function enVentana(cumple, dias) {
+    var m = String(cumple || '').match(/^(\d{1,2})\/(\d{1,2})/);
+    if (!m) return false;
+    var now = new Date();
+    for (var y = now.getFullYear() - 1; y <= now.getFullYear() + 1; y++) {
+      var d = new Date(y, Number(m[2]) - 1, Number(m[1]));
+      if (Math.abs(d - now) <= ((dias || 0) + 0.5) * 86400000) return true;
+    }
+    return false;
+  }
+  function cumpleElegido() { return $('club-day').value && $('club-month').value ? $('club-day').value + '/' + $('club-month').value : ''; }
+
+  // Qué regalos le corresponden en este pedido (el sheet lo vuelve a controlar al recibirlo)
+  function regalosPendientes() {
+    var d = banda.data;
+    if (!d || !d.beneficios) return [];
+    var uniendo = !d.socio && $('club-join').checked;
+    if (!d.socio && !uniendo) return [];
+    var b = d.beneficios, out = [];
+    var cum = uniendo && !d.tieneCumple ? cumpleElegido() : '';
+    if (b.cumple && !d.cumpleEntregado && (d.cumpleHoy || (cum && enVentana(cum, d.diasCumple)))) out.push('cumple');
+    if (b.bienvenida && !d.bienvenidaEntregada) out.push('bienvenida');
+    if (b.sellos && d.cada && Math.floor((d.pedidos + 1) / d.cada) > d.usados) out.push('sellos');
+    return out;
+  }
+
+  // Cómo quedaría La Banda después de este pedido (para el comprobante de Mercado Pago)
+  function prevBanda(phone, elegidos, uniendo) {
+    var d = banda.data;
+    if (!d || banda.tel !== phone) return null;
+    var b = d.beneficios || {};
+    return {
+      socio: !!(d.socio || uniendo), pedidos: d.pedidos + 1, usados: d.usados + (elegidos.sellos ? 1 : 0),
+      cada: d.cada, frecuenteDesde: d.frecuenteDesde, sellosActivo: !!b.sellos,
+      sellosOpciones: b.sellos ? b.sellos.opciones.filter(function (o) { return !o.sinStock; }).map(function (o) { return o.n; }) : [],
+      regalos: Object.keys(elegidos).map(function (t) { return { tipo: t, opcion: elegidos[t] }; })
+    };
+  }
 
   function refreshClubCheck() {
     var ph = $('phone').value.replace(/\D/g, '');
-    var show = ph.length >= 8 && !isClubMember();
+    var valido = ph.length >= 8 && ph.length <= 13;
+    var show = valido && !esSocio();
     $('club-check').hidden = !show;
     $('club-promos-row').hidden = !(show && $('club-join').checked);
+    var d = banda.data, b = d && d.beneficios;
+    $('club-hint').hidden = !(show && b && b.bienvenida && !d.bienvenidaEntregada && !$('club-join').checked);
+    $('club-cumple-l').textContent = b && b.cumple ? '🎂 Tu cumple (opcional, pero conviene 😉):' : '🎂 Tu cumple (opcional):';
+    pintarRegalos(valido);
+  }
+
+  function pintarRegalos(valido) {
+    var box = $('banda-pick');
+    box.textContent = '';
+    if (!valido) { box.hidden = true; return; }
+    if (banda.loading) {
+      var espera = esSocio() || $('club-join').checked;
+      box.hidden = !espera;
+      if (espera) box.appendChild(h('p', { class: 'bp-wait', text: 'Fijándonos si Papina te tiene algo guardado…' }));
+      return;
+    }
+    var lista = regalosPendientes();
+    Object.keys(banda.picks).forEach(function (t) { if (lista.indexOf(t) === -1) delete banda.picks[t]; });
+    box.hidden = !lista.length;
+    lista.forEach(function (t) {
+      var ben = banda.data.beneficios[t];
+      var pick = banda.picks[t];
+      box.appendChild(h('div', { class: 'bp-gift' }, [
+        h('p', { class: 'bp-t', text: EMOJI_REGALO[t] + ' ' + ben.texto }),
+        h('p', { class: 'bp-s', text: 'Elegí el tuyo:' }),
+        h('div', { class: 'bp-opts', role: 'group', 'aria-label': 'Elegí tu regalo' }, ben.opciones.map(function (o) {
+          return h('button', { type: 'button', class: 'bp-opt', 'data-regalo': t, 'data-op': o.n, 'aria-pressed': pick === o.n ? 'true' : 'false', disabled: o.sinStock }, [
+            o.n, o.sinStock ? h('small', { text: 'Sin stock' }) : null
+          ]);
+        })),
+        h('button', { type: 'button', class: 'bp-pass', 'data-regalo': t, 'data-op': '', 'aria-pressed': pick === '' ? 'true' : 'false', text: 'Esta vez paso (te lo guardo para la próxima)' })
+      ]));
+    });
+  }
+
+  function elegirRegalo(btn) {
+    var t = btn.getAttribute('data-regalo'), op = btn.getAttribute('data-op');
+    if (btn.disabled) return;
+    banda.picks[t] = op;
+    refreshClubCheck();
+  }
+
+  // ───── Comprobante: el carnet de La Banda ─────
+  function primerNombre(n) {
+    var x = String(n || '').trim().split(/\s+/)[0] || '';
+    if (!x || x.toLowerCase() === 'cliente') return '';
+    return x.charAt(0).toUpperCase() + x.slice(1).toLowerCase();
+  }
+  function listaO(a) { return a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' o ' + a[a.length - 1]; }
+
+  function progresoSellos(p, tomo) {
+    if (!p || !p.sellosActivo || !p.cada) return null;
+    var cada = p.cada, llevas = p.pedidos % cada;
+    var guardados = Math.max(0, Math.floor(p.pedidos / cada) - (p.usados || 0));
+    var ops = p.sellosOpciones || [];
+    var premio = ops.length > 1 ? 'tu premio (elegís entre ' + listaO(ops) + ')' : (ops.length ? 'tu premio: ' + ops[0] : 'tu premio');
+    var frase, det;
+    if (tomo) {
+      frase = 'Tus pedidos tienen premio.';
+      det = 'Este pedido se lleva el tuyo. ' + (llevas === 0 ? 'El contador arranca de nuevo.' : 'Y ya llevás ' + llevas + ' de ' + cada + ' para el próximo.');
+    } else if (guardados > 0) {
+      frase = 'Tenés un premio guardado.';
+      det = 'Lo elegís en tu próximo pedido.' + (llevas > 0 ? ' Y ya llevás ' + llevas + ' de ' + cada + ' para el siguiente.' : '');
+    } else {
+      var faltan = cada - llevas;
+      frase = faltan === 1 ? 'Uno más y seguimos hablando.' : (faltan === 2 ? 'Ya casi…' : (llevas * 2 > cada ? 'Mirá vos, venís seguido.' : 'Vas juntando…'));
+      det = 'Llevás ' + llevas + ' de ' + cada + '. Te ' + (faltan === 1 ? 'falta 1' : 'faltan ' + faltan) + ' para ' + premio + '.';
+    }
+    var lleno = llevas === 0 && (tomo || guardados > 0);
+    var on = lleno ? cada : llevas;
+    var dots = null;
+    if (cada <= 12) {
+      var kids = [];
+      for (var i = 0; i < cada; i++) kids.push(h('span', { class: 'bc-dot' + (i < on ? ' on' : ''), text: 'P' }));
+      dots = h('div', { class: 'bc-dots', role: 'img', 'aria-label': on + ' de ' + cada + ' sellos' }, kids);
+    }
+    return h('div', { class: 'bc-prog' }, [h('p', { class: 'bc-frase', text: frase }), dots, h('p', { class: 'bc-det', text: det })]);
+  }
+
+  function pintarBandaRecibo(pending, name, socio) {
+    var p = pending && pending.banda;
+    var card = $('rc-banda'), fq = $('rc-freq');
+    card.textContent = '';
+    fq.hidden = true;
+    var freq = !!(p && p.frecuenteDesde && p.pedidos === p.frecuenteDesde);
+    var tomo = !!(p && (p.regalos || []).some(function (r) { return r.tipo === 'sellos'; }));
+    if (!socio) {
+      card.hidden = true;
+      if (freq) { fq.textContent = '¡Te vimos volver! Ya sos de los frecuentes de Papina.'; fq.hidden = false; }
+      return;
+    }
+    var pn = primerNombre(name);
+    card.appendChild(h('p', { class: 'bc-name', text: 'La Banda de Papina' }));
+    card.appendChild(h('p', { class: 'bc-who', text: pn ? pn + ', sos de los nuestros' : 'Sos de los nuestros' }));
+    if (freq) card.appendChild(h('p', { class: 'bc-freq', text: '¡Te vimos volver! Ya sos de los frecuentes de Papina.' }));
+    var prog = progresoSellos(p, tomo);
+    if (prog) card.appendChild(prog);
+    card.hidden = false;
+  }
+
+  // ───── Formulario para sumarse a La Banda ─────
+  function itemsBeneficios(d) {
+    if (!d || !d.beneficios) return [];
+    var b = d.beneficios, out = [];
+    var ops = function (ben) {
+      var a = ben.opciones.filter(function (o) { return !o.sinStock; }).map(function (o) { return o.n; });
+      return a.length > 1 ? 'Elegís entre ' + listaO(a) + '.' : (a.length ? 'Te toca: ' + a[0] + '.' : '');
+    };
+    var li = function (emoji, titulo, resto) { return h('li', null, [h('i', { text: emoji }), h('span', null, [h('b', { text: titulo }), ' ' + resto])]); };
+    if (b.bienvenida) out.push(li('🎁', 'De bienvenida:', 'un regalo en tu primer pedido como parte de la banda. ' + ops(b.bienvenida)));
+    if (b.cumple) {
+      var dias = Number(d.diasCumple) || 0;
+      out.push(li('🎂', 'En tu cumple', (dias > 0 ? '(o hasta ' + dias + ' días antes o después)' : '(el mismo día)') + ', Papina te invita. ' + ops(b.cumple)));
+    }
+    if (b.sellos && d.cada) out.push(li('🏅', d.cada === 1 ? 'En cada pedido,' : 'Cada ' + d.cada + ' pedidos,', 'tus pedidos tienen premio. ' + ops(b.sellos)));
+    return out;
   }
 
   function openClub(pre) {
@@ -1364,26 +1619,43 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
     var days = ['<option value="">Día</option>'], months = ['<option value="">Mes</option>'];
     for (var d = 1; d <= 31; d++) days.push('<option>' + d + '</option>');
     ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'].forEach(function (m, i) { months.push('<option value="' + (i + 1) + '">' + m + '</option>'); });
-    var sheet = h('div', { class: 'club-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Club Doña Papina' });
+    var sheet = h('div', { class: 'club-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'La Banda de Papina' });
     var box = h('div', { class: 'club-box' });
     box.innerHTML =
-      '<h3>🎁 Club Doña Papina</h3>' +
-      '<p>Sumarte es gratis y con tu teléfono te reconocemos en cada pedido:</p>' +
-      '<ul><li>Un regalo de bienvenida en tu próximo pedido.</li><li>Un regalo en la semana de tu cumpleaños.</li><li>Regalos por tus pedidos.</li></ul>' +
+      '<h3>La Banda de Papina</h3>' +
+      '<p class="bc-lead">Sumarte es gratis. Con tu celu, Papina te reconoce cada vez que volvés.</p>' +
+      '<div id="cl-ben" hidden></div>' +
       '<label class="f">NOMBRE<input class="field" id="cl-name" maxlength="60" autocomplete="name"></label>' +
-      '<label class="f">TELÉFONO<input class="field" id="cl-phone" type="tel" inputmode="tel" maxlength="20" placeholder="Ej: 11 5555 1234"></label>' +
-      '<label class="f">CUMPLEAÑOS (OPCIONAL)<span class="row2"><select class="field" id="cl-day">' + days.join('') + '</select><select class="field" id="cl-month">' + months.join('') + '</select></span></label>' +
+      '<label class="f">CELULAR<input class="field" id="cl-phone" type="tel" inputmode="tel" maxlength="20" placeholder="Ej: 11 5555 1234"></label>' +
+      '<label class="f"><span id="cl-cumple-l">TU CUMPLE (OPCIONAL)</span><span class="row2"><select class="field" id="cl-day">' + days.join('') + '</select><select class="field" id="cl-month">' + months.join('') + '</select></span></label>' +
       '<label class="f">MAIL (OPCIONAL)<input class="field" id="cl-mail" type="email" inputmode="email" maxlength="80" autocomplete="email"></label>' +
       '<label class="f">BARRIO (OPCIONAL)<input class="field" id="cl-barrio" maxlength="60"></label>' +
-      '<label class="club-check"><input type="checkbox" id="cl-promos"> <span>Quiero recibir promociones (opcional)</span></label>' +
-      '<p style="font-size:11.5px;color:var(--brown)">Usamos tus datos solo para el Club y tus pedidos. No los compartimos.</p>' +
+      '<label class="club-check"><input type="checkbox" id="cl-promos"> <span>Quiero que Papina me cuente sus promos (opcional)</span></label>' +
+      '<p style="font-size:11.5px;color:var(--brown)">Tus datos quedan entre nosotros: los usamos solo para la banda y tus pedidos.</p>' +
       '<p class="err" id="cl-err" hidden></p>' +
-      '<div class="club-actions"><button type="button" class="no" id="cl-no">Ahora no</button><button type="button" class="go" id="cl-go">Sumarme</button></div>';
+      '<div class="club-actions"><button type="button" class="no" id="cl-no">En otro momento</button><button type="button" class="go" id="cl-go">¡Me sumo!</button></div>';
     sheet.appendChild(box);
     document.body.appendChild(sheet);
     var c = loadCliente();
     $('cl-name').value = pre.name || c.name || '';
     $('cl-phone').value = pre.phone || c.phone || '';
+
+    // Lo que Papina tiene para los de la banda: sale de la configuración del sheet (si un beneficio está apagado, no aparece)
+    var pintarBen = function (d) {
+      var items = itemsBeneficios(d);
+      var cont = $('cl-ben');
+      if (!cont) return;
+      cont.textContent = '';
+      if (items.length) {
+        cont.appendChild(h('p', { class: 'cl-ben-t', text: 'Lo que Papina tiene para los de la banda:' }));
+        cont.appendChild(h('ul', null, items));
+        cont.hidden = false;
+      }
+      if (d && d.beneficios && d.beneficios.cumple) $('cl-cumple-l').textContent = 'TU CUMPLE (OPCIONAL, PERO CONVIENE 😉)';
+    };
+    var guardado = beneficiosGuardados();
+    if (guardado) pintarBen(guardado); else pedirEstado('').then(pintarBen);
+
     var close = function () { sheet.remove(); };
     sheet.addEventListener('click', function (e) { if (e.target === sheet) close(); });
     $('cl-no').onclick = close;
@@ -1395,24 +1667,35 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
         cumple: day && month ? day + '/' + month : '', mail: $('cl-mail').value.trim(), barrio: $('cl-barrio').value.trim(),
         promos: $('cl-promos').checked
       };
-      if (!data.nombre) { err.textContent = 'Escribí tu nombre.'; err.hidden = false; return; }
-      if (data.telefono.length < 8 || data.telefono.length > 13) { err.textContent = 'Revisá el teléfono: tiene que tener entre 8 y 13 números.'; err.hidden = false; return; }
+      if (!data.nombre) { err.textContent = 'Escribí tu nombre así Papina sabe quién sos.'; err.hidden = false; return; }
+      if (data.telefono.length < 8 || data.telefono.length > 13) { err.textContent = 'Revisá el celu: tiene que tener entre 8 y 13 números.'; err.hidden = false; return; }
       var btn = $('cl-go'); btn.disabled = true; btn.textContent = 'Guardando…';
       fetch(CLUB_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
         .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (res) {
           if (!res.ok || !res.d.ok) throw new Error((res.d && res.d.error) || 'No pudimos guardar tus datos. Probá de nuevo en un rato.');
-          markClubMember();
+          markClubMember(true);
           saveCliente({ name: data.nombre, phone: data.telefono, cumple: data.cumple });
-          box.innerHTML = '<h3>🎉 ¡Ya sos parte del Club!</h3><p class="ok">Te reconocemos por tu teléfono en cada pedido.</p>' +
-            '<p>Acordate de dejar tu teléfono al pedir para recibir tus beneficios.</p>' +
-            '<div class="club-actions"><button type="button" class="go" id="cl-close">Listo</button></div>';
+          var ben = (beneficiosGuardados() || {}).beneficios;
+          if (res.d.nuevo) {
+            box.innerHTML = '<h3>¡Ya estás adentro! 🤝</h3><p class="bc-lead">Desde ahora sos de los nuestros.</p>' +
+              '<p>Pedí siempre con este celu así Papina te reconoce.' +
+              (ben && ben.bienvenida && !res.d.bienvenidaEntregada ? ' Tu regalo de bienvenida te espera en tu próximo pedido: lo elegís al pagar.' : '') + '</p>' +
+              '<div class="club-actions"><button type="button" class="go" id="cl-close">Listo</button></div>';
+          } else {
+            box.innerHTML = '<h3>Vos ya eras de los nuestros 😉</h3><p class="bc-lead">Actualizamos tus datos.</p>' +
+              '<div class="club-actions"><button type="button" class="go" id="cl-close">Listo</button></div>';
+          }
           $('cl-close').onclick = close;
           var rb = $('rc-club'); if (rb) rb.hidden = true;
           if ($('phone') && !$('phone').value) $('phone').value = data.telefono;
+          // Si es el mismo celu del pedido, ya puede elegir su regalo de bienvenida ahí mismo
+          if (banda.data && banda.tel === data.telefono) banda.data.socio = true;
+          if (banda.data && banda.tel === data.telefono && data.cumple && !banda.data.tieneCumple) { banda.data.tieneCumple = true; banda.data.cumpleHoy = enVentana(data.cumple, banda.data.diasCumple); }
+          onPhoneChange();
           refreshClubCheck();
         })
-        .catch(function (e) { err.textContent = e.message; err.hidden = false; btn.disabled = false; btn.textContent = 'Sumarme'; });
+        .catch(function (e) { err.textContent = e.message; err.hidden = false; btn.disabled = false; btn.textContent = '¡Me sumo!'; });
     };
   }
 
@@ -1708,7 +1991,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       sub.classList.toggle('is-invite', invite);
       sub.classList.toggle('is-ok', st === 'wait' && w.push);
       if (st === 'ready') sub.textContent = (many ? 'Pasá a retirarlos. Mostrá tu código al llegar.' : 'Pasá a retirarlo. Mostrá tu código al llegar.') +
-        (w.gift ? ' 🎁 Incluye un regalo del Club: ' + String(w.gift).toLowerCase() + '.' : '');
+        (w.gift ? ' 🎁 Y no te vayas sin lo tuyo: ' + String(w.gift).toLowerCase() + '.' : '');
       else if (st === 'cancel') sub.textContent = 'Escribinos por WhatsApp y lo resolvemos.';
       else if (w.push) sub.innerHTML = '✅ <b>Notificaciones activadas.</b> Te avisamos cuando esté listo, ya podés cerrar la página.';
       else if (w.noPush) sub.textContent = w.noPush;
@@ -1797,15 +2080,19 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
       var c = loadCliente();
       if (c.phone && !$('phone').value) $('phone').value = c.phone;
       if (c.name && !$('name').value) $('name').value = c.name;
-      $('phone').addEventListener('input', refreshClubCheck);
+      $('phone').addEventListener('input', onPhoneChange);
       $('club-join').addEventListener('change', refreshClubCheck);
+      $('club-day').addEventListener('change', refreshClubCheck);
+      $('club-month').addEventListener('change', refreshClubCheck);
+      $('banda-pick').addEventListener('click', function (e) { var b = e.target.closest('[data-regalo]'); if (b) elegirRegalo(b); });
       var dd = ['<option value="">Día</option>'], mm = ['<option value="">Mes</option>'];
       for (var i = 1; i <= 31; i++) dd.push('<option>' + i + '</option>');
       ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'].forEach(function (m, i) { mm.push('<option value="' + (i + 1) + '">' + m + '</option>'); });
       $('club-day').innerHTML = dd.join(''); $('club-month').innerHTML = mm.join('');
       refreshClubCheck();
-      // soypapina.com.ar/club abre el formulario del Club
-      if (/^\/club/.test(window.location.pathname) || new URLSearchParams(window.location.search).get('club') === '1') openClub({});
+      // soypapina.com.ar/banda (o el link viejo /club) abre el formulario de La Banda
+      var qs = new URLSearchParams(window.location.search);
+      if (/^\/(club|banda)/.test(window.location.pathname) || qs.get('club') === '1' || qs.get('banda') === '1') openClub({});
     })();
     if (status !== 'exito' && watches.length) { paintWatch(); checkWatches(); }
     if (status === 'exito') showReceipt(pid);
