@@ -12,7 +12,7 @@
 //    Pago vuelve a avisar solo, varias veces. Thinkion evita duplicados porque
 //    el id del pedido es siempre el id del pago.
 
-const { CATALOG, expandCart, buildThinkionOrder, sendToThinkion } = require("./menu");
+const { CATALOG, expandCart, buildThinkionOrder, sendToThinkion, clienteDelPedido, pickupCodeFor } = require("./menu");
 
 // id_payment de "Mercado Pago" dentro de Thinkion (tabla payment_method, fila id=15)
 const ID_PAYMENT_MERCADO_PAGO = 15;
@@ -98,7 +98,14 @@ exports.handler = async (event) => {
 
     // 5. Armamos el pedido completo para Thinkion
     const orderId = Number(payment.id); // id del pago de MP: único y trazable
+    // Ficha del cliente (si dejó teléfono): frecuente / cortesía. Si tarda o falla, sigue igual.
+    const cliente = metadata.phone ? await clienteDelPedido({
+      phone: metadata.phone, name: metadata.customer_name, club: !!metadata.club, promos: !!metadata.promos,
+      code: metadata.group_with || pickupCodeFor(orderId), orderId, total: paid, lines: norm.lines,
+    }, 8000) : null;
     const order = buildThinkionOrder({
+      phone: metadata.phone,
+      cliente,
       orderId,
       name: metadata.customer_name,
       groupWith: metadata.group_with,

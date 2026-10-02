@@ -453,6 +453,41 @@ function pickupCodeFor(orderId) {
   return digits.length >= 4 ? digits.slice(-4) : "";
 }
 
+// ─── Clientes (pestaña "Clientes" del sheet, vía Apps Script) ───────────────
+// Solo si el cliente dejó su teléfono. Si el sheet tarda o falla, el pedido sigue igual.
+function cleanPhone(v) {
+  const d = String(v == null ? "" : v).replace(/\D/g, "");
+  return d.length >= 8 && d.length <= 13 ? d : "";
+}
+
+async function clienteDelPedido(o, timeoutMs) {
+  const url = process.env.CLIENTES_URL, key = process.env.CLIENTES_KEY;
+  const telefono = cleanPhone(o.phone);
+  if (!url || !key || !telefono) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 4000);
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        clave: key, accion: "pedido", telefono, nombre: cleanText(o.name, 60), club: !!o.club, promos: !!o.promos,
+        codigo: String(o.code || ""), total: Number(o.total) || 0, pedido: String(o.orderId || ""),
+        productos: (o.lines || []).map((l) => (CATALOG.products[l.key] || {}).code || (CATALOG.products[l.key] || {}).name || l.key),
+      }),
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    const d = await resp.json().catch(() => null);
+    return d && d.ok ? d : null;
+  } catch (err) {
+    console.warn("Clientes: no respondió a tiempo, el pedido sigue igual:", err && err.message);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function buildThinkionOrder(o) {
   const disc = o.discount && o.discount.amount > 0 ? o.discount : null;
   // El nombre va primero en las notas para que se vea en el KDS (el de Thinkion y el propio)
@@ -465,6 +500,9 @@ function buildThinkionOrder(o) {
   const groupName = cleanText(o.groupName || "", 40).toUpperCase().replace(/\s-\s/g, " ");
   if (groupWith) notes.push(`VA JUNTO CON ${groupWith}${groupName ? " " + groupName : ""}`);
   notes.push("RETIRA EN EL LOCAL");
+  const cli = o.cliente || null;
+  if (cli && cli.frecuente) notes.push(`FRECUENTE (${cli.pedidos} PEDIDOS)`);
+  if (cli && cli.cortesia) notes.push(`CORTESIA: ${cleanText(cli.cortesia, 120).toUpperCase().replace(/\s-\s/g, " ")}`);
   if (disc) notes.push(`CODIGO ${disc.code}`);
   const general = cleanText(o.generalNotes, 300);
   if (general) notes.push(general);
@@ -476,11 +514,12 @@ function buildThinkionOrder(o) {
       total: { debt: o.debt, discount: disc ? disc.amount : 0 },
     },
     customer: {
-      id_customer: customerIdFor(o.name),
+      // Con teléfono: un cliente por teléfono. Sin teléfono: por nombre, como siempre.
+      id_customer: cleanPhone(o.phone) ? customerIdFor("TEL " + cleanPhone(o.phone)) : customerIdFor(o.name),
       name: o.name || "Cliente",
       surname: "",
-      email: o.email || "sin-email@soypapina.com",
-      tel: null,
+      email: o.email || (cli && cli.mail) || "sin-email@soypapina.com",
+      tel: cleanPhone(o.phone) || null,
       doc: null,
       company: null,
       address: {
@@ -561,7 +600,12 @@ exports.handler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    // Netlify guarda la lista 1 minuto: todas las visitas de ese minuto la reciben sin hacer trabajar la función
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=0, must-revalidate",
+      "Netlify-CDN-Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+    },
     body: JSON.stringify({
       ok: true,
       fuente: priceState.source,
@@ -594,5 +638,7 @@ exports.buildThinkionOrder = buildThinkionOrder;
 exports.sendToThinkion = sendToThinkion;
 exports.freeOrderId = freeOrderId;
 exports.pickupCodeFor = pickupCodeFor;
+exports.cleanPhone = cleanPhone;
+exports.clienteDelPedido = clienteDelPedido;
 exports.customerIdFor = customerIdFor;
 exports.refreshPrices = refreshPrices;

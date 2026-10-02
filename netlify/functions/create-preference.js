@@ -27,6 +27,8 @@ const {
   freeOrderId,
   refreshPrices,
   pickupCodeFor,
+  cleanPhone,
+  clienteDelPedido,
 } = require("./menu");
 
 const SITE_URL = process.env.SITE_URL || "https://soypapina.com.ar";
@@ -100,11 +102,20 @@ exports.handler = async (event) => {
     }
     const pricing = applyDiscount(norm.total, coupon ? coupon.percent : 0);
     const generalNotes = cleanText(customer.notes_general, 300);
+    // Teléfono (opcional) y Club
+    const phone = cleanPhone(customer.phone);
+    const club = !!(phone && body.club);
+    const promos = !!(club && body.promos);
 
     // ───── 100% de descuento: no hay nada para cobrar, va directo a Thinkion ─────
     if (pricing.pay <= 0) {
       const orderId = freeOrderId();
+      const code = groupWith || pickupCodeFor(orderId);
+      // Ficha del cliente: frecuente / cortesía (si tarda o falla, el pedido sigue igual)
+      const cliente = phone ? await clienteDelPedido({ phone, name, club, promos, code, orderId, total: pricing.pay, lines: norm.lines }, 4000) : null;
       const order = buildThinkionOrder({
+        phone,
+        cliente,
         orderId,
         name,
         groupWith,
@@ -132,8 +143,10 @@ exports.handler = async (event) => {
       return json(200, {
         free: true,
         order_id: orderId,
-        pickup_code: groupWith || pickupCodeFor(orderId),
+        pickup_code: code,
         grouped: !!groupWith,
+        regalo: cliente && cliente.cortesia ? cliente.cortesia : "",
+        club: !!(cliente && (cliente.socio || club)),
         subtotal: pricing.subtotal,
         discount: pricing.discount,
         total: 0,
@@ -185,6 +198,7 @@ exports.handler = async (event) => {
       cart: compactCart(norm.lines),
     };
     if (groupWith) { metadata.group_with = groupWith; metadata.group_name = groupName; }
+    if (phone) { metadata.phone = phone; metadata.club = club; metadata.promos = promos; }
     if (coupon) {
       metadata.coupon = coupon.code;
       metadata.discount_key = coupon.key;
