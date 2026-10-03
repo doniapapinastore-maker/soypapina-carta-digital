@@ -682,6 +682,10 @@ body{
 .co .marco{display:flex;flex-direction:column;flex:1;min-height:0}
 @media (min-width:1024px){ .co .marco{flex:0 1 auto} }
 
+.pago-card .enc-s{margin:4px 0 0}
+.pago-acc{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.pago-acc .bnd-b{border:0;cursor:pointer}
+.pago-no{background:none;border:0;color:var(--red);font-weight:800;font-size:13px;text-decoration:underline;cursor:pointer;padding:8px 4px}
 </style>
 </head>
 <body>
@@ -694,6 +698,8 @@ body{
     <div class="hand">¿Qué pinta hoy? 👀</div>
     <div class="estado" id="estado"><i></i><span id="estado-t">Miércoles a domingo, de 19 a 23</span></div>
   </header>
+
+  <div class="enc-card pago-card" id="pago-card" role="status" aria-live="polite" hidden></div>
 
   <a class="bnd" id="bnd" href="/banda" hidden>
     <div class="bnd-tx"><div class="bnd-t" id="bnd-t">🤝 La Banda de Papina</div><div class="bnd-s" id="bnd-s">Si ya sos de la casa, ¿por qué no tener tus premios? Sumarte es gratis.</div></div>
@@ -878,7 +884,7 @@ body{
   <div class="pie" id="co-pie">
     <button class="pay-btn" type="button" id="co-go">SEGUIR</button>
     <button class="pay-btn" type="button" id="pay" aria-disabled="true">PAGAR Y ENVIAR</button>
-    <div class="secure" id="secure">Al tocar pagar vas a ir a Mercado Pago para completar el pago de forma segura.</div>
+    <div class="secure" id="secure">Al tocar pagar vas a ir a Mercado Pago. Cuando termines de pagar, volvé a soypapina.com.ar: tu código de retiro te espera acá.</div>
   </div>
  </div>
 </div>
@@ -1310,7 +1316,7 @@ body{
     var fn = $('free-note');
     fn.hidden = !free;
     if (free) fn.textContent = '🎁 ' + state.coupon.name + ': este pedido no tiene costo y no pasa por Mercado Pago.';
-    $('secure').textContent = free ? 'Al confirmar, tu pedido va directo a la cocina.' : 'Al tocar pagar vas a ir a Mercado Pago para completar el pago de forma segura.';
+    $('secure').textContent = free ? 'Al confirmar, tu pedido va directo a la cocina.' : 'Al tocar pagar vas a ir a Mercado Pago. Cuando termines de pagar, volvé a soypapina.com.ar: tu código de retiro te espera acá.';
     ['pay'].forEach(function (id) {
       $(id).setAttribute('aria-disabled', has && !state.paying ? 'false' : 'true');
       $(id).textContent = state.paying ? 'PROCESANDO…' : (free ? 'CONFIRMAR PEDIDO' : 'PAGAR Y ENVIAR');
@@ -1462,12 +1468,13 @@ body{
             name: name, notes: notes, total: d.total, subtotal: d.subtotal != null ? d.subtotal : total(),
             code: d.pickup_code || (group ? group.code : ''), grouped: !!(d.grouped || group), orderedAt: Date.now(),
             regalo: d.free ? (d.regalo || '') : nombresRegalo.join(' + '), phone: phone, club: !!(d.club || payload.club),
+            ref: d.external_reference || '',
             lineas: state.lines.map(function (l) { return { key: l.key, sel: clone(l.sel) }; }),
             banda: d.banda || prevision, tieneCumple: !!((banda.data && banda.tel === phone && banda.data.tieneCumple) || payload.cumple),
             discount: state.coupon && d.discount > 0 ? { name: state.coupon.name, amount: d.discount, code: state.coupon.code } : null,
             items: state.lines.map(function (l) { var t = describeText(l); return { name: ALL[l.key].name, detail: t.detail, drink: t.drink, note: t.note }; })
           };
-          try { sessionStorage.setItem('dp-pending-order', JSON.stringify(pending)); } catch (e) {}
+          try { localStorage.setItem('dp-pending-order', JSON.stringify(pending)); } catch (e) { try { sessionStorage.setItem('dp-pending-order', JSON.stringify(pending)); } catch (e2) {} }
           if (d.free) { showReceipt(null, { free: true, orderId: d.order_id }); return; }
           window.location.href = d.init_point;
           return;
@@ -1491,7 +1498,9 @@ body{
     var free = !!(opts && opts.free);
     var pending = null;
     try {
-      var raw = sessionStorage.getItem('dp-pending-order');
+      var raw = null;
+      try { raw = localStorage.getItem('dp-pending-order'); localStorage.removeItem('dp-pending-order'); } catch (e1) {}
+      if (!raw) raw = sessionStorage.getItem('dp-pending-order');
       if (raw) pending = JSON.parse(raw);
       sessionStorage.removeItem('dp-pending-order');
     } catch (e) {}
@@ -2782,6 +2791,50 @@ body{
     document.querySelectorAll('#cart input, #cart textarea, #cart select').forEach(function (i) { i.addEventListener('focus', function () { setTimeout(function () { i.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 280); }); });
   }
 
+  // ───── Pago hecho desde la app de Mercado Pago: al volver, buscamos el comprobante ─────
+  var ESTADO_URL = '/.netlify/functions/mp-estado';
+  var pagoIntentos = 0, pagoTimer = null;
+  function pagoPendiente() {
+    var p = null;
+    try { p = JSON.parse(localStorage.getItem('dp-pending-order') || 'null'); } catch (e) {}
+    if (!p || !p.ref) return null;
+    if (Date.now() - (p.orderedAt || 0) > 60 * 60 * 1000) { try { localStorage.removeItem('dp-pending-order'); } catch (e) {} return null; }
+    return p;
+  }
+  function pintarPagoCard(p, modo) {
+    var box = $('pago-card'); box.textContent = ''; box.hidden = false;
+    var t = { buscando: 'Fijándonos si ya se pagó tu pedido…', none: '¿Ya pagaste tu pedido?', pending: 'Mercado Pago todavía está confirmando tu pago.', error: 'No pudimos consultar a Mercado Pago.' }[modo];
+    var sub = { buscando: '', none: 'Si pagaste desde la app de Mercado Pago, puede tardar unos segundos en aparecer.', pending: 'Apenas lo confirme, te mostramos tu código de retiro.', error: 'Revisá tu conexión y probá de nuevo.' }[modo];
+    box.appendChild(h('p', { class: 'enc-t', text: '🧾 ' + t }));
+    box.appendChild(h('p', { class: 'lds-d', text: 'Pedido de ' + (p.name || 'vos') + (p.total != null ? ' · ' + money(p.total) : '') }));
+    if (sub) box.appendChild(h('p', { class: 'enc-s', text: sub }));
+    if (modo === 'buscando') return;
+    var otra = h('button', { type: 'button', class: 'bnd-b', text: 'Ya pagué, revisar de nuevo' });
+    otra.onclick = function () { pagoIntentos = 0; revisarPago(); };
+    var no = h('button', { type: 'button', class: 'pago-no', text: 'No lo pagué' });
+    no.onclick = function () { try { localStorage.removeItem('dp-pending-order'); } catch (e) {} clearTimeout(pagoTimer); box.hidden = true; };
+    box.appendChild(h('div', { class: 'pago-acc' }, [otra, no]));
+  }
+  function revisarPago() {
+    clearTimeout(pagoTimer);
+    var p = pagoPendiente();
+    if (!p || !$('receipt').hidden) { $('pago-card').hidden = true; return; }
+    pintarPagoCard(p, 'buscando');
+    fetch(ESTADO_URL + '?ref=' + encodeURIComponent(p.ref), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error('estado');
+        if (d.status === 'approved') { $('pago-card').hidden = true; showReceipt(d.payment_id); return; }
+        if (d.status === 'rejected') {
+          try { localStorage.removeItem('dp-pending-order'); } catch (e) {}
+          $('pago-card').hidden = true; notice('El pago no se pudo completar. Podés intentar de nuevo.'); return;
+        }
+        pintarPagoCard(p, d.status === 'pending' ? 'pending' : 'none');
+        if (++pagoIntentos < 8) pagoTimer = setTimeout(revisarPago, 8000);
+      })
+      .catch(function () { pintarPagoCard(p, 'error'); });
+  }
+
   // ───── arranque ─────
   function init() {
     COMBOS.forEach(function (p) { $('grid-combos').appendChild(buildCard(p)); });
@@ -2824,6 +2877,7 @@ body{
     })();
     if (status !== 'exito' && watches.length) { paintWatch(); checkWatches(); }
     if (status === 'exito') showReceipt(pid);
+    else if (!status && pagoPendiente()) revisarPago();
     else if (status === 'fallo') notice('El pago no se pudo completar. Podés intentar de nuevo.');
     else if (status === 'pendiente') notice('Tu pago está pendiente de confirmación. Te avisamos apenas se acredite.');
 
