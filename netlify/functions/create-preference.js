@@ -224,9 +224,14 @@ exports.handler = async (event) => {
       metadata.expected_pay = pricing.pay;
     }
 
+    // Marca única de este pago: la carta la usa para preguntar si se pagó
+    // (cuando el cliente paga desde la app de Mercado Pago y no vuelve solo a la página)
+    const externalRef = "dp_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+
     const preference = {
       items: mpItems,
       metadata,
+      external_reference: externalRef,
       back_urls: {
         success: `${SITE_URL}/?pago=exito`,
         failure: `${SITE_URL}/?pago=fallo`,
@@ -260,6 +265,7 @@ exports.handler = async (event) => {
     return json(200, {
       init_point: checkoutUrl,
       preference_id: data.id,
+      external_reference: externalRef,
       subtotal: pricing.subtotal,
       discount: pricing.discount,
       total: pricing.pay,
