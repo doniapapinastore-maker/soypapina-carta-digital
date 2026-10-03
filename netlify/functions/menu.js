@@ -89,13 +89,12 @@ const CATALOG = {
     { key: "ketchup",  id: 178, name: "KETCHUP",  label: "Ketchup",  short: "Ketchup", available: true },
   ],
   drinks: [
-    { key: "sin_bebida",   id: null, name: "SIN BEBIDA",             label: "Sin bebida",                 short: "Sin bebida", available: true },
-    { key: "coca_500",     id: 179, name: "COCA COLA 500ML",         label: "Coca-Cola 500",              short: "Coca-Cola 500", default: true, available: true },
-    { key: "agua_sin_gas", id: 8,   name: "AGUA SIN GAS",            label: "Agua sin gas",               short: "Agua sin gas", available: false },
-    { key: "agua_con_gas", id: 4,   name: "AGUA CON GAS",            label: "Agua con gas",               short: "Agua con gas", available: false },
-    { key: "sab_manzana",  id: 5,   name: "AGUA SABORIZADA MANZANA", label: "Agua saborizada de manzana", short: "Saborizada manzana", available: false },
-    { key: "sab_pomelo",   id: 7,   name: "AGUA SABORIZADA POMELO",  label: "Agua saborizada de pomelo",  short: "Saborizada pomelo", available: false },
-    { key: "sevenup_500",  id: 116, name: "7 UP 500",                label: "7up 500",                    short: "7up 500", available: false },
+    // Bebidas de los combos. Pepsi y Manaos todavía no tienen su ID de Thinkion: viajan como nota en la comanda.
+    { key: "coca_500",     id: 179,  name: "COCA COLA 500ML",   label: "Coca-Cola 500",    short: "Coca-Cola 500", default: true, available: true },
+    { key: "pepsi_500",    id: null, name: "PEPSI 500ML",       label: "Pepsi 500",        short: "Pepsi 500", available: true, nota: "BEBIDA: PEPSI 500ML" },
+    { key: "sevenup_500",  id: 116,  name: "7 UP 500",          label: "7Up 500",          short: "7Up 500", available: true },
+    { key: "manaos_500",   id: null, name: "COCA MANAOS 500ML", label: "Coca Manaos 500",  short: "Manaos 500", available: true, nota: "BEBIDA: COCA MANAOS 500ML" },
+    { key: "sin_bebida",   id: null, name: "SIN BEBIDA",        label: "Sin bebida",       short: "Sin bebida", available: true },
   ],
 };
 
@@ -406,7 +405,8 @@ function buildThinkionItems(lines) {
       name: p.name,
       amount: 1,
       price: Number.isFinite(l.price) ? l.price : p.price,
-      notes: [l.drink === "sin_bebida" ? "SIN BEBIDA" : "", l.note || ""].filter(Boolean).join(" - "),
+      // La nota del cliente va primero (así "PARA: JUAN" queda al principio); después, la bebida si no tiene ID en Thinkion
+      notes: [l.note || "", l.drink === "sin_bebida" ? "SIN BEBIDA" : ((MAPS.drinks[l.drink] || {}).nota || "")].filter(Boolean).join(" | "),
       ordering: ordering++,
     });
 

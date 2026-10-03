@@ -3179,9 +3179,12 @@ html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!importan
     var el = $('rc-eta'); if (!el || !w) return;
     var now = Date.now();
     if (!w.eta) { el.hidden = false; el.innerHTML = '<span class="esperando">En un ratito lo toma la cocina<i>.</i><i>.</i><i>.</i></span>'; return; }
-    var total = Math.max(60000, w.eta - (w.since || now)), falta = w.eta - now, pct = Math.max(4, Math.min(100, 100 * (1 - falta / total)));
-    var de = new Date(w.eta), hh = ('0' + de.getHours()).slice(-2) + ':' + ('0' + de.getMinutes()).slice(-2);
-    var txt = falta > 60000 ? 'Faltan ~<b>' + Math.ceil(falta / 60000) + ' min</b> · listo aprox. a las ' + hh : 'Ya casi, lo estamos terminando 🔥';
+    // Si se cumple la hora y sigue en la cocina, el reloj se renueva hasta 2 veces (+3 minutos cada vez)
+    var etaEf = w.eta, extra = 0;
+    while (etaEf - now <= 60000 && extra < 2) { etaEf += 3 * 60000; extra++; }
+    var total = Math.max(60000, etaEf - (w.since || now)), falta = etaEf - now, pct = Math.max(4, Math.min(100, 100 * (1 - falta / total)));
+    var de = new Date(etaEf), hh = ('0' + de.getHours()).slice(-2) + ':' + ('0' + de.getMinutes()).slice(-2);
+    var txt = falta > 60000 ? (extra ? 'Unos minutos más · ' : '') + 'Faltan ~<b>' + Math.ceil(falta / 60000) + ' min</b> · listo aprox. a las ' + hh : 'Ya casi, lo estamos terminando 🔥';
     el.hidden = false;
     el.innerHTML = '<span>' + txt + '</span><span class="reloj-b"><i style="width:' + pct.toFixed(1) + '%"></i></span>';
   }

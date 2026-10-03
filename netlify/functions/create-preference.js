@@ -251,6 +251,7 @@ exports.handler = async (event) => {
       items: mpItems,
       metadata,
       external_reference: externalRef,
+      statement_descriptor: "DONA PAPINA",   // así figura en el resumen de la tarjeta del cliente
       back_urls: {
         success: `${SITE_URL}/?pago=exito`,
         failure: `${SITE_URL}/?pago=fallo`,
