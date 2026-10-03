@@ -1157,7 +1157,7 @@ html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!importan
     if (s.sauce) main.push(label(o.sauce, s.sauce));
     main = main.filter(Boolean);
     var extras = (s.extras || []).map(function (k) { return label(o.extras, k); });
-    return { main: main.join(' · '), extras: extras.join(', '), drink: label(o.drinks, s.drink), note: noteOf(s) };
+    return { main: main.join(' · '), extras: extras.join(', '), drink: p.drink !== false ? label(o.drinks, s.drink) : '', note: noteOf(s) };
   }
   function describeText(line) {
     var d = describe(line);
@@ -1281,10 +1281,12 @@ html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!importan
       box.appendChild(h('section', { class: 'opt', 'data-opt': s.id }, [head, tiles, s.foot ? h('p', { class: 'opt-foot', text: s.foot }) : null]));
     });
     // Aclaraciones
-    var chips = h('div', { class: 'tiles', role: 'group', 'aria-labelledby': 'h-notes' }, NOTE_CHIPS.map(function (t) {
+    var kNota = state.sheet.key, notasRapidas = /^d_|^prueba$/.test(kNota) ? [] : (/^p_/.test(kNota) ? ['Sin sal'] : NOTE_CHIPS);
+    var chips = h('div', { class: 'tiles', role: 'group', 'aria-labelledby': 'h-notes' }, notasRapidas.map(function (t) {
       return h('button', { type: 'button', class: 'tile check note', role: 'checkbox', 'aria-checked': 'false', 'data-chip': t }, [h('span', { class: 'mark' }), h('span', { text: t })]);
     }));
     var txt = h('input', { class: 'field', type: 'text', id: 'sheet-text', maxlength: '80', autocomplete: 'off', placeholder: 'Otra aclaración para este producto', 'aria-label': 'Otra aclaración para esta hamburguesa' });
+    if (/^d_|^prueba$/.test(kNota)) { txt.value = state.sheet.sel.text || ''; txt.addEventListener('input', function () { state.sheet.sel.text = txt.value; }); return; }
     box.appendChild(h('section', { class: 'opt', 'data-opt': 'notes' }, [
       h('div', { class: 'opt-head' }, [h('h4', { id: 'h-notes', text: 'Aclaraciones' }), h('span', { class: 'tag soft', text: 'Opcional' })]),
       chips, txt
@@ -1572,7 +1574,12 @@ html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!importan
           };
           try { localStorage.setItem('dp-pending-order', JSON.stringify(pending)); } catch (e) { try { sessionStorage.setItem('dp-pending-order', JSON.stringify(pending)); } catch (e2) {} }
           if (d.free) { showReceipt(null, { free: true, orderId: d.order_id }); return; }
-          window.location.href = d.init_point;
+          var irAPagar = function () { window.location.href = d.init_point; };
+          if (pending.ref) {
+            var guardado = fetch(ESTADO_URL, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ref: pending.ref, pedido: Object.assign({}, pending, { lineas: undefined, banda: undefined }) }) }).catch(function () {});
+            Promise.race([guardado, new Promise(function (ok) { setTimeout(ok, 1500); })]).then(irAPagar);
+          } else irAPagar();
           return;
         }
         if (res.d && res.d.coupon_invalid) { state.coupon = null; state.couponOpen = false; paintCoupon(); }
@@ -2948,7 +2955,7 @@ html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!importan
   }
   function notaConPara(l, nota) {
     var q = paraDe(l);
-    return q ? 'PARA: ' + q + (nota ? ' · ' + nota : '') : nota;
+    return q ? 'PARA: ' + q + (nota ? ' | ' + nota : '') : nota;
   }
   function pintarPara() {
     var box = $('para-box'); if (!box) return;
@@ -3415,7 +3422,15 @@ html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!importan
       }
     })();
     if (status !== 'exito' && watches.length) { paintWatch(); checkWatches(); }
-    if (status === 'exito') showReceipt(pid);
+    if (status === 'exito') {
+      var refVuelta = new URLSearchParams(location.search).get('external_reference') || '';
+      var hayPend = false; try { hayPend = !!localStorage.getItem('dp-pending-order') || !!sessionStorage.getItem('dp-pending-order'); } catch (e) {}
+      if (!hayPend && /^dp_[a-z0-9_]+$/.test(refVuelta)) {
+        fetch(ESTADO_URL + '?ref=' + encodeURIComponent(refVuelta), { cache: 'no-store' }).then(function (r) { return r.json(); })
+          .then(function (d) { if (d && d.resumen) { try { localStorage.setItem('dp-pending-order', JSON.stringify(d.resumen)); } catch (e) {} } showReceipt(pid); })
+          .catch(function () { showReceipt(pid); });
+      } else showReceipt(pid);
+    }
     else if (!status && pagoPendiente()) revisarPago();
     else if (status === 'fallo') notice('El pago no se pudo completar. Podés intentar de nuevo.');
     else if (status === 'pendiente') notice('Tu pago está pendiente de confirmación. Te avisamos apenas se acredite.');
