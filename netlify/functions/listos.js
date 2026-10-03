@@ -157,7 +157,7 @@ async function sendPushes(store, entry) {
     if (entry.status === "cancelled") await store.delete(key);
     else {
       await store.setJSON(key, Object.assign({}, sub, { notifiedAt: entry.at })); // queda para el recordatorio
-      // Encuesta "¿Cómo nos fue?": se manda una hora después (ver encuestasPendientes)
+      // Encuesta "¿Cómo nos fue?": se manda 1 hora 40 después (ver encuestasPendientes)
       try { await store.setJSON(`e/${entry.at}-${entry.code}-${phone}`, { code: entry.code, name: entry.name, subscription: sub.subscription }); } catch (e) {}
     }
   }
@@ -166,7 +166,7 @@ async function sendPushes(store, entry) {
 
 // ─── Encuesta "¿Cómo nos fue?" (una hora después de que el pedido estuvo listo) ───
 // Se revisa cada vez que el KDS hace su envío agrupado (cada 3 minutos): no suma consumo extra.
-const ENCUESTA_ESPERA_MS = 60 * 60 * 1000;
+const ENCUESTA_ESPERA_MS = 100 * 60 * 1000;   // 1 hora 40 después de "listo"
 const ENCUESTA_TOPE_MS = 4 * 60 * 60 * 1000;
 async function encuestasPendientes(store, now) {
   if (!canPush()) return;

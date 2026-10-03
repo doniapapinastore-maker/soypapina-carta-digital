@@ -53,6 +53,10 @@ const CATALOG = {
     // needLive: true = solo se pueden pedir si Thinkion devolvió su precio (no tienen precio de respaldo)
     p_cla: { id: 185, code: "PC", name: "PAPAS CLASICAS CHICAS",  price: 0, bread: false, fries: false, sauce: false, drink: false, extras: true, available: true, needLive: true },
     p_saz: { id: 186, code: "PS", name: "PAPAS SAZONADAS CHICAS", price: 0, bread: false, fries: false, sauce: false, drink: false, extras: true, available: true, needLive: true },
+
+    // ─── Producto de prueba (ID 234 "Prueba MP"): solo aparece con soypapina.com.ar/?prueba=1 ───
+    // Si se desactiva o se borra en Thinkion, deja de poder pedirse (no tiene precio de respaldo).
+    prueba: { id: 234, code: "PR", name: "Prueba MP", price: 0, bread: false, fries: false, sauce: false, drink: false, extras: false, available: true, needLive: true },
   },
 
   // ─── Opciones (van a Thinkion como productos "hijos", a $0) ──────
@@ -259,6 +263,14 @@ function cleanText(v, max) {
 }
 
 const wants = (p, what) => p[what] !== false;
+
+// ───── Horario de pedidos web: miércoles a domingo, de 19 a 23 (hora de Argentina) ─────
+const HORARIO = { dias: [0, 3, 4, 5, 6], desde: 19, hasta: 23 };
+function horarioAbierto(now = Date.now()) {
+  const d = new Date(now - 3 * 3600 * 1000);   // Argentina: UTC-3, sin horario de verano
+  const dia = d.getUTCDay(), h = d.getUTCHours();
+  return HORARIO.dias.includes(dia) && h >= HORARIO.desde && h < HORARIO.hasta;
+}
 // Un producto se puede pedir si está activo y, si no tiene precio de respaldo, si Thinkion ya dio su precio
 const disponible = (p) => !!p.available && (!p.needLive || (p.livePrice === true && p.price > 0));
 
@@ -662,6 +674,7 @@ exports.handler = async (event) => {
 
 // Para que las otras funciones usen el mismo catálogo.
 exports.CATALOG = CATALOG;
+exports.horarioAbierto = horarioAbierto;
 exports.MAPS = MAPS;
 exports.cleanText = cleanText;
 exports.normalizeLines = normalizeLines;

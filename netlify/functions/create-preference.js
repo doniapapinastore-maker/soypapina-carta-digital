@@ -17,6 +17,7 @@
 
 const {
   CATALOG,
+  horarioAbierto,
   cleanText,
   normalizeLines,
   compactCart,
@@ -101,6 +102,11 @@ exports.handler = async (event) => {
     if (body.coupon) {
       coupon = resolveCoupon(body.coupon);
       if (!coupon.ok) return json(400, { error: coupon.error, coupon_invalid: true });
+    }
+    // Fuera de horario no se toman pedidos (los códigos de la casa pasan igual, para probar)
+    const codigoDeLaCasa = !!(coupon && Number(coupon.percent) >= 99);
+    if (!horarioAbierto() && !codigoDeLaCasa) {
+      return json(403, { error: "Ahora estamos cerrados. Atendemos de miércoles a domingo, de 19 a 23.", cerrado: true });
     }
     const pricing = applyDiscount(norm.total, coupon ? coupon.percent : 0);
     const generalNotes = cleanText(customer.notes_general, 300);
