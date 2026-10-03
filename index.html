@@ -748,7 +748,7 @@ html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!importan
 .caja.abierta .tapa{transform:rotate(-18deg) translateY(-12px);transition:transform .4s cubic-bezier(.3,1.4,.5,1)}
 .caja .cae{position:absolute;left:var(--x);top:2%;width:22%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:3px solid #fffdf6;box-shadow:0 4px 8px #0004;z-index:1;opacity:0;animation:cae .55s var(--d) cubic-bezier(.5,0,.8,1.4) forwards}
 @keyframes cae{from{transform:translateY(-120px) rotate(var(--r));opacity:0}60%{opacity:1}to{transform:translateY(16%) rotate(var(--r));opacity:1}}
-.caja .cuerpo-c{z-index:2}.caja .sello,.caja .nom,.caja .cuenta{z-index:3}
+.caja .cuerpo-c{z-index:2}.caja .tapa{z-index:3}.caja .sello,.caja .nom,.caja .cuenta{z-index:4}.caja .sello-listo{z-index:5}
 #nudge-say.entra{animation:sugEntra .55s cubic-bezier(.3,1.5,.5,1)}
 @keyframes sugEntra{from{transform:translateX(-40px) scale(.85);opacity:0}}
 #nudge-say.entra .cara{animation:risa .7s .2s}
@@ -762,6 +762,12 @@ html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!importan
 }
 .cond-link{display:inline-block;background:none;border:0;color:var(--red);font-weight:800;font-size:13px;text-decoration:underline;text-underline-offset:3px;padding:6px 0;cursor:pointer}
 .cond-p{margin:0 0 10px;font-size:14px;line-height:1.45;text-align:left}
+.caja .sello-listo{top:72%;left:65%;padding:3px 12px 4px;border-width:3px;outline-width:2px;outline-offset:2px}
+.caja .sello-listo b{font-size:clamp(17px,5.2vw,23px)}
+.caja .sello-listo span{font-size:clamp(14px,4.2vw,18px)}
+.rc-guarda{text-align:center;margin:10px 0 2px}
+.rc-guarda p{margin:0 0 8px;font-size:13px;line-height:1.35;color:inherit;opacity:.92}
+.rc-guarda button{display:inline-block;max-width:100%;border:2px solid currentColor;background:#fff8e7;color:#33200F;border-radius:999px;padding:9px 16px;font-weight:800;font-size:14px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -1010,6 +1016,7 @@ html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!importan
     <div class="rc-hero" id="rc-hero" data-state="wait" role="status" aria-live="polite" hidden>
       <div class="rc-hero-top"><span class="rc-dot" aria-hidden="true"></span><b id="rc-hero-t">🍳 Preparando tu pedido</b></div>
       <div class="rc-code"><small>TU CÓDIGO<br>DE RETIRO</small><b id="rc-code">—</b></div>
+      <div class="rc-guarda"><p>¿Querés tenerlo a mano? Guardá tu comprobante y mostralo cuando vengas a retirar 😉</p><button type="button" id="rc-copy">📥 Guardar comprobante</button></div>
       <p class="rc-eta" id="rc-eta" hidden></p>
       <p class="rc-group" id="rc-group" hidden></p>
       <p id="rc-hero-s"></p>
@@ -1041,7 +1048,7 @@ html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!importan
 
     <div class="rc-save"><span>Comprobante:</span>
       <a id="rc-wa" href="#" target="_blank" rel="noopener">📱 WhatsApp</a>
-      <button type="button" id="rc-copy">📥 Guardar comprobante</button>
+
     </div>
 
     <button class="again" type="button" id="rc-again">HACER OTRO PEDIDO</button>
