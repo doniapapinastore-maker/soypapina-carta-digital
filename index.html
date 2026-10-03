@@ -434,7 +434,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
 .watch-min { position: fixed; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 10px); z-index: 150; min-width: 46px; height: 46px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--ink); color: var(--cream); font-weight: 800; font-size: 15px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); cursor: pointer; }
 .watch-min.is-ready { background: var(--green); }
 .watch-min.is-cancel { background: var(--red); }
-@media (prefers-reduced-motion: reduce) { .rc-dot, .rc-hero { animation: none !important; } }
+@media (max-width:0px) { .rc-dot, .rc-hero { animation: none !important; } }
 
 /* ───────── Comprobante ───────── */
 .receipt { position: fixed; inset: 0; z-index: 200; background: var(--cream); display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
@@ -521,7 +521,7 @@ body.is-paused .add, body.is-paused .pay-btn { opacity: 0.45; pointer-events: no
   .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (max-width:0px) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 /* ═════════ REDISEÑO "tu caja ya tiene tu nombre" (capa nueva) ═════════ */
@@ -731,7 +731,37 @@ body{
 .dice .glo .sug-no{background:none;border:0;text-decoration:underline;font-weight:700;color:var(--brown);margin-left:4px}
 .globo .preg{display:flex;gap:6px;margin-top:10px}
 .globo .preg input{flex:1;min-width:0;font-family:var(--f-body);font-size:15px;padding:8px 10px;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink)}
-@media (prefers-reduced-motion:reduce){.caja .tapa,.caja .sello,.sello-listo,.humo{animation:none!important}}
+@media (max-width:0px){.caja .tapa,.caja .sello,.sello-listo,.humo{animation:none!important}}
+/* ═════ animaciones v2 ═════ */
+html.quieto *,html.quieto *::before,html.quieto *::after{animation:none!important;transition:none!important}
+.asis.en-pago,.asis.en-rc{z-index:260}
+.asis.en-pago{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
+.asis.en-rc{bottom:calc(16px + env(safe-area-inset-bottom,0px))!important}
+.asis.en-pago .chef,.asis.en-rc .chef{width:54px;height:54px}
+.chef.festeja{animation:festeja 1.1s cubic-bezier(.3,1.4,.5,1),respira 3.2s ease-in-out 1.1s infinite}
+@keyframes festeja{20%{transform:translateY(-26px) rotate(-12deg) scale(1.12)}45%{transform:translateY(-34px) rotate(200deg) scale(1.15)}70%{transform:translateY(-8px) rotate(360deg)}100%{transform:none}}
+.chef.risa{animation:risa .7s,respira 3.2s ease-in-out .7s infinite}
+@keyframes risa{10%,50%,90%{transform:rotate(-7deg) translateY(-2px)}30%,70%{transform:rotate(7deg) translateY(-2px)}}
+.asis.piensa::before{content:"•••";position:absolute;left:40px;top:-18px;z-index:2;background:#fffdf6;border:2px solid var(--ink);border-radius:12px;padding:0 6px;font-size:14px;line-height:16px;color:var(--ink);animation:punto 1.1s infinite}
+.chispa{position:absolute;left:28px;bottom:28px;font-style:normal;font-size:20px;pointer-events:none;animation:chispa .9s ease-out forwards}
+@keyframes chispa{from{transform:rotate(var(--ang)) translateY(0) scale(.4);opacity:1}to{transform:rotate(var(--ang)) translateY(-70px) scale(1.1);opacity:0}}
+.caja.abierta .tapa{transform:rotate(-18deg) translateY(-12px);transition:transform .4s cubic-bezier(.3,1.4,.5,1)}
+.caja .cae{position:absolute;left:var(--x);top:2%;width:22%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:3px solid #fffdf6;box-shadow:0 4px 8px #0004;z-index:1;opacity:0;animation:cae .55s var(--d) cubic-bezier(.5,0,.8,1.4) forwards}
+@keyframes cae{from{transform:translateY(-120px) rotate(var(--r));opacity:0}60%{opacity:1}to{transform:translateY(16%) rotate(var(--r));opacity:1}}
+.caja .cuerpo-c{z-index:2}.caja .sello,.caja .nom,.caja .cuenta{z-index:3}
+#nudge-say.entra{animation:sugEntra .55s cubic-bezier(.3,1.5,.5,1)}
+@keyframes sugEntra{from{transform:translateX(-40px) scale(.85);opacity:0}}
+#nudge-say.entra .cara{animation:risa .7s .2s}
+#nudge-say .glo button:not(.sug-no){animation:late2 1.4s .6s 2}
+@keyframes late2{50%{transform:scale(1.08);box-shadow:0 0 0 6px #B3402A33}}
+.picado{z-index:900}
+@media (hover:hover) and (pointer:fine){
+  .tabs{flex-wrap:wrap!important;overflow:visible!important;row-gap:8px}
+  .polas{display:grid!important;grid-template-columns:1fr 1fr;gap:26px 22px;overflow:visible!important;padding:22px 22px 10px}
+  .pola{width:auto!important}
+}
+.cond-link{display:inline-block;background:none;border:0;color:var(--red);font-weight:800;font-size:13px;text-decoration:underline;text-underline-offset:3px;padding:6px 0;cursor:pointer}
+.cond-p{margin:0 0 10px;font-size:14px;line-height:1.45;text-align:left}
 </style>
 </head>
 <body>
@@ -900,6 +930,7 @@ body{
             <div class="club-check sub" style="cursor:default;flex-wrap:wrap"><span>🤝 ¿Te recomendó alguien de la banda?</span>
               <input class="field" id="club-amigo" maxlength="20" autocomplete="off" placeholder="Su código, ej.: ZOE-4417" style="text-transform:uppercase"></div>
             <p class="bp-s" id="club-amigo-msg" hidden></p>
+            <button type="button" class="cond-link" id="cond-club">Ver condiciones de La Banda</button>
           </div>
           <div class="bp" id="banda-pick" hidden></div>
         </div>
@@ -1010,7 +1041,7 @@ body{
 
     <div class="rc-save"><span>Comprobante:</span>
       <a id="rc-wa" href="#" target="_blank" rel="noopener">📱 WhatsApp</a>
-      <button type="button" id="rc-copy">📋 Copiar</button>
+      <button type="button" id="rc-copy">📥 Guardar comprobante</button>
     </div>
 
     <button class="again" type="button" id="rc-again">HACER OTRO PEDIDO</button>
@@ -1211,14 +1242,14 @@ body{
     $('sheet-title').textContent = p.name;
     $('sheet-desc').textContent = existing ? 'Cambiá lo que quieras y guardá los cambios.' : p.desc;
     buildSheetBody();
-    $('sheet-bg').hidden = false;
+    $('sheet-bg').hidden = false; if (typeof lugarPapin === 'function') { cerrarGlobo(); lugarPapin(); }
     document.body.style.overflow = 'hidden';
     $('sheet-scroll').scrollTop = 0;
     paintSheet();
     $('sheet-x').focus();
   }
   function closeSheet() {
-    $('sheet-bg').hidden = true;
+    $('sheet-bg').hidden = true; lugarPapin();
     document.body.style.overflow = '';
     state.sheet = null;
     if (state.lastFocus && state.lastFocus.focus) { try { state.lastFocus.focus(); } catch (e) {} }
@@ -1312,7 +1343,7 @@ body{
     } else {
       state.lines.push({ uid: state.uid++, key: sh.key, sel: sel });
       var kv = sh.key, fr = fraseAgregado(name);
-      setTimeout(function () { volar(kv, function () { sonido('pop'); toast(fr); }); }, 30);
+      setTimeout(function () { volar(kv, function () { sonar('pop'); papinHace('estrellas'); toast(fr); }); }, 30);
     }
     closeSheet();
     paintCards();
@@ -1572,8 +1603,8 @@ body{
     var sub = pending && pending.subtotal != null ? pending.subtotal : null;
     var refId = free ? (opts.orderId || '') : paymentId;
 
-    $('rc-title-t').textContent = free ? '¡Pedido confirmado!' : '¡Pago aprobado!';
-    setTimeout(function () { sonido('fiesta'); papelPicado(); }, 350);
+    $('rc-title-t').textContent = free ? '¡Pedido enviado!' : '¡Pago aprobado!';
+    setTimeout(function () { sonar('fiesta'); papelPicado(); }, 350);
     $('rc-total-l').textContent = free ? 'TOTAL' : 'TOTAL PAGADO';
     $('rc-id-l').textContent = free ? 'N° DE PEDIDO' : 'ID DE PAGO (Mercado Pago)';
     document.querySelector('.rc-mail').hidden = free;
@@ -1639,16 +1670,15 @@ body{
 
     $('rc-wa').href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(text);
     $('rc-copy').onclick = function () {
-      var btn = $('rc-copy');
-      var done = function () { btn.textContent = '✅ Copiado'; setTimeout(function () { btn.textContent = '📋 Copiar'; }, 1800); };
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(function () { window.prompt('Copiá el texto:', text); });
-      else window.prompt('Copiá el texto:', text);
+      guardarComprobante({ name: name, code: $('rc-code').textContent.trim(), total: $('rc-total').textContent.trim(), date: dateStr,
+        items: items.map(function (i) { return i.name + (i.detail ? ' (' + i.detail + ')' : ''); }) }, $('rc-copy'));
     };
     $('rc-again').onclick = function () { window.location.href = window.location.pathname; };
     // (el seguimiento queda guardado y se muestra como cartelito al volver a la carta)
     $('receipt').hidden = false;
     if (!$('cart').hidden) cerrarCo();
-    cerrarGlobo(); $('asis').hidden = true;
+    cerrarGlobo(); lugarPapin();
+    setTimeout(function () { papinHace('festeja'); decir('¡Gracias por elegirnos! 🎉', 'Te aviso cuando esté listo.'); }, 900);
     document.body.style.overflow = 'hidden';
     if (code) startWatch({
       code: code, name: name, since: (pending && pending.orderedAt) || Date.now(), grouped: !!(pending && pending.grouped),
@@ -1926,6 +1956,7 @@ body{
         h('button', { type: 'button', class: 'bp-pass', 'data-regalo': t, 'data-op': '', 'aria-pressed': pick === '' ? 'true' : 'false', text: 'Esta vez paso (te lo guardo para la próxima)' })
       ]));
     });
+    if (lista.length) { var cl = h('button', { type: 'button', class: 'cond-link', text: 'Ver condiciones' }); cl.onclick = abrirCondiciones; box.appendChild(cl); }
   }
 
   function elegirRegalo(btn) {
@@ -2700,7 +2731,7 @@ body{
   // ───── avisos ─────
   var toastTimer = null;
   function toast(text) {
-    if (!hayVentana() && !callado) { decir(text); return; }
+    if (!ventanaBloquea() && !callado) { decir(text); return; }
     var old = document.querySelector('.toast'); if (old) old.remove();
     var t = h('div', { class: 'toast', role: 'status', text: text });
     document.body.appendChild(t);
@@ -2734,9 +2765,10 @@ body{
   var PASOS = ['Tu caja', '¿Quién sos?', 'A pagar'], paso = 1;
   function abrirCo(n) {
     if (!state.lines.length) { toast('Primero elegí algo rico 😉 Después pagás.'); return; }
-    $('cart').hidden = false; document.body.style.overflow = 'hidden'; cerrarGlobo(); $('asis').hidden = true; irPaso(n || 1);
+    $('cart').hidden = false; document.body.style.overflow = 'hidden'; cerrarGlobo(); lugarPapin(); irPaso(n || 1);
+    if ((n || 1) === 1) cajaLlena(document.querySelector('#cart [data-step="1"] .caja-slot'));
   }
-  function cerrarCo() { $('cart').hidden = true; document.body.style.overflow = ''; $('asis').hidden = false; }
+  function cerrarCo() { $('cart').hidden = true; document.body.style.overflow = ''; lugarPapin(); }
   function irPaso(n) {
     paso = n;
     if (n === 2) pintarPara();
@@ -2781,10 +2813,11 @@ body{
   // pagar: si algo falta en otro paso, vuelve a ese paso
   function pagarPaso() {
     if (cerradoAhora()) { pintarHorario(); return; }
+    var cj3 = document.querySelector('#cart [data-step="3"] .caja'); if (cj3) { cj3.classList.remove('cierra'); void cj3.offsetWidth; cj3.classList.add('cierra'); }
     pay();
     if (state.paying) {
       var pg = progreso($('co-pie'), 'Procesando tu pedido…', 5000);
-      var iv = setInterval(function () { if (!state.paying) { clearInterval(iv); if (!$('receipt').hidden) pg.ok('¡Listo!'); else pg.cancelar(); } }, 200);
+      var iv = setInterval(function () { if (!state.paying || !$('receipt').hidden) { clearInterval(iv); if (!$('receipt').hidden) pg.ok('¡Listo!'); else pg.cancelar(); } }, 200);
     }
     setTimeout(function () {
       if (!$('err-name').hidden || !$('err-phone').hidden || banda.frenado) { var keep = banda.frenado; irPaso(2); if (keep) $('banda-pick').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
@@ -2816,7 +2849,7 @@ body{
   function bump() { var m = $('mini'); m.classList.remove('bump'); void m.offsetWidth; m.classList.add('bump'); var c = document.querySelector('#lado .caja'); if (c) { c.classList.remove('abre'); void c.offsetWidth; c.classList.add('abre'); } }
   function volar(key, fin) {
     var dest = innerWidth >= 1024 ? $('lado') : $('mini'), img = document.querySelector('.card[data-key="' + key + '"] img');
-    if (!img || !dest || matchMedia('(prefers-reduced-motion: reduce)').matches) { bump(); fin(); return; }
+    if (!img || !dest || menosMov) { bump(); fin(); return; }
     var a = img.getBoundingClientRect(), b = dest.getBoundingClientRect();
     if (!a.width || a.bottom < 0 || a.top > innerHeight) { bump(); fin(); return; }
     var fl = document.createElement('img'); fl.className = 'vuela'; fl.src = img.src;
@@ -2836,8 +2869,8 @@ body{
     g.hidden = false; g.style.animation = 'none'; void g.offsetWidth; g.style.animation = '';
     $('g-extra').innerHTML = (sub ? '<small>' + esc(sub) + '</small>' : '') + (extra || '');
     var el = $('g-t'), i = 0; el.textContent = '';
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) el.textContent = txt;
-    else escT = setInterval(function () { el.textContent = txt.slice(0, ++i); if (i >= txt.length) clearInterval(escT); }, 22);
+    if (menosMov) el.textContent = txt;
+    else escT = setInterval(function () { el.textContent = txt.slice(0, ++i); if (txt.charAt(i - 1) !== ' ') blip(); if (i >= txt.length) clearInterval(escT); }, 22);
     ch.classList.remove('habla', 'saluda'); void ch.offsetWidth; ch.classList.add('habla');
     if (!quieto) gT = setTimeout(cerrarGlobo, 4200 + txt.length * 25);
   }
@@ -2861,7 +2894,7 @@ body{
       envios: ['Desde la carta digital no hacemos envíos: lo retirás en Olavarría 622. Si lo querés con envío, pedilo por PedidosYa.'],
       horario: ['De miércoles a domingo, de 19 a 23.', E.t],
       smash: ['Aplastamos la bolita de carne contra la plancha bien caliente: costra crocante por fuera, jugosa por dentro.'],
-      banda: ['Es el club de la casa: es gratis, tenés regalo de bienvenida, algo en tu cumple y premio cada 3 pedidos.', null, '<div class="opc"><a class="lleg" href="/banda">Conocé la banda</a></div>']
+      banda: ['Es el club de la casa: es gratis, tenés regalo de bienvenida, algo en tu cumple y premio cada 3 pedidos.', null, '<div class="opc"><a class="lleg" href="/banda">Conocé la banda</a><button type="button" data-p="condiciones">Ver condiciones</button></div>']
     };
   }
   function menuPapina() {
@@ -2869,7 +2902,7 @@ body{
     decir('¿En qué te doy una mano?', null, '<div class="opc">' +
       '<button type="button" data-p="elegir" class="r">Ayudame a elegir</button><button type="button" data-p="envios">¿Hacen envíos?</button><button type="button" data-p="donde">¿Dónde están?</button>' +
       '<button type="button" data-p="horario">¿Qué horario tienen?</button><button type="button" data-p="smash">¿Qué es smash?</button><button type="button" data-p="banda">¿Qué es La Banda?</button>' +
-      '<button type="button" data-p="callate">Callate un ratito 🤐</button><button type="button" data-p="sonido">' + (mudo ? 'Con sonido 🔊' : 'Silencio 🔇') + '</button></div>' +
+      '<button type="button" data-p="callate">Callate un ratito 🤐</button><button type="button" data-p="sonido">' + (mudo ? 'Con sonido 🔊' : 'Silencio 🔇') + '</button><button type="button" data-p="quieto">' + (menosMov ? 'Con animaciones ✨' : 'Menos movimiento 🐢') + '</button></div>' +
       '<div class="preg"><input id="papin-q" type="text" maxlength="120" placeholder="O escribime tu pregunta…" autocomplete="off"><button type="button" class="r" data-p="preguntar">Preguntar</button></div>', true);
   }
   function llevarA(key) {
@@ -2887,6 +2920,8 @@ body{
       var b = e.target.closest('[data-p],[data-ir]'); if (!b) return;
       var p = b.getAttribute('data-p'), ir = b.getAttribute('data-ir');
       if (p === 'mas') return menuPapina();
+      if (p === 'condiciones') { cerrarGlobo(); abrirCondiciones(); return; }
+      if (p === 'quieto') { menosMov = !menosMov; try { localStorage.setItem('dp-quieto', menosMov ? '1' : '0'); } catch (e) {} document.documentElement.classList.toggle('quieto', menosMov); return menuPapina(); }
       if (p === 'sonido') { mudo = !mudo; try { localStorage.setItem('dp-mute', mudo ? '1' : '0'); } catch (e) {} if (!mudo) sonido('pop'); return menuPapina(); }
       if (p === 'preguntar') { var qi = $('papin-q'), qv = qi ? qi.value.trim() : ''; if (!qv) { if (qi) qi.focus(); return; } var rr = responderTexto(qv); return decir(rr[0], rr[1], (rr[2] || '') + '<div class="opc"><button type="button" data-p="mas">Otra pregunta</button></div>', true); }
       if (p === 'elegir') return decir('Decime qué tenés ganas y te llevo:', null, '<div class="opc"><button type="button" data-ir="lt">Algo bien cargado</button><button type="button" data-ir="ldv">Doble sí o sí</button><button type="button" data-ir="lfs">Algo más liviano</button><button type="button" data-ir="lpp">Para los chicos</button></div>', true);
@@ -2947,10 +2982,11 @@ body{
     $('co-atras').onclick = function () { if (paso > 1) irPaso(paso - 1); else cerrarCo(); };
     $('co-go').onclick = seguir;
     $('nudge-mas').onclick = function () { cerrarCo(); };
+    $('cond-club').onclick = abrirCondiciones;
     // el bloque "¿Para quién?" va justo después del campo del nombre
     var pb = $('para-box'), nl = $('name').closest('.lbl'); if (pb && nl) nl.parentNode.insertBefore(pb, nl.nextSibling);
     $('name').addEventListener('input', function () {
-      pintarPara();
+      pintarPara(); fibron();
       var slot = document.querySelector('#cart [data-step="2"] .caja-slot');
       if (slot) { slot.innerHTML = cajaHTML(false); slot.firstChild.classList.add('escribe'); }
       var g = $('dice-nom'); if (g) g.textContent = nomCaja() ? 'Así va a salir tu caja, con tu nombre 😉' : 'Decime tu nombre y lo escribo en tu caja.';
@@ -3029,7 +3065,7 @@ body{
   function vibrar(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
   // ── Papel picado (2 segundos, liviano)
   function papelPicado() {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (menosMov) return;
     var c = document.createElement('canvas'); c.className = 'picado'; document.body.appendChild(c);
     var W = c.width = innerWidth, H = c.height = innerHeight, ctx = c.getContext('2d');
     var cols = ['#B3402A', '#F3D08A', '#4A5A34', '#96603A', '#FFF8E7'], P = [];
@@ -3047,7 +3083,7 @@ body{
     var el = $('bar-total'); if (!el) return;
     cancelAnimationFrame(totalAnim);
     var desde = totalAnt, ini = performance.now(); totalAnt = nuevo;
-    if (desde === nuevo || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = money(nuevo); return; }
+    if (desde === nuevo || menosMov) { el.textContent = money(nuevo); return; }
     (function paso(t) { var k = Math.min(1, (t - ini) / 450), v = Math.round(desde + (nuevo - desde) * (1 - Math.pow(1 - k, 3))); el.textContent = money(v); if (k < 1) totalAnim = requestAnimationFrame(paso); })(ini);
   }
   // ── Barra de progreso para lo que tarda (el % es estimado: avanza y se completa cuando responde)
@@ -3056,11 +3092,12 @@ body{
     dentro.appendChild(box);
     var pct = 0, ini = Date.now(), fin = false;
     var pintar = function () { box.querySelector('i').style.width = pct + '%'; box.querySelector('.prog-t').textContent = texto + ' ' + Math.round(pct) + '%'; box.setAttribute('aria-valuenow', String(Math.round(pct))); };
+    papinPiensa(true);
     var tm = setInterval(function () { if (fin) return; var x = (Date.now() - ini) / (msEstimado || 4000); pct = Math.min(94, 100 * (1 - Math.exp(-2.2 * x))); pintar(); }, 120);
     pintar();
     return {
-      ok: function (txtOk) { fin = true; clearInterval(tm); pct = 100; pintar(); box.querySelector('.prog-t').textContent = (txtOk || '¡Listo!') + ' ✓'; box.classList.add('ok'); setTimeout(function () { box.remove(); }, 900); },
-      cancelar: function () { fin = true; clearInterval(tm); box.remove(); }
+      ok: function (txtOk) { fin = true; clearInterval(tm); papinPiensa(false); pct = 100; pintar(); box.querySelector('.prog-t').textContent = (txtOk || '¡Listo!') + ' ✓'; box.classList.add('ok'); setTimeout(function () { box.remove(); }, 900); },
+      cancelar: function () { fin = true; clearInterval(tm); papinPiensa(false); box.remove(); }
     };
   }
   // ── Dips sueltos (pestaña Papas) y su dibujito
@@ -3080,9 +3117,11 @@ body{
     if (n === 1 && !no('mas')) return { id: 'mas', txt: '¿Seguro que con esto alcanza? 👀', btn: 'Sumar algo más', ir: '' };
     return null;
   }
+  var sugUlt = '';
   function pintarSugerencia() {
     var box = $('nudge-say'); if (!box) return;
-    var s = sugerencia(); box.hidden = !s; if (!s) return;
+    var s = sugerencia(); box.hidden = !s; if (!s) { sugUlt = ''; return; }
+    if (s.id !== sugUlt) { sugUlt = s.id; box.classList.remove('entra'); void box.offsetWidth; box.classList.add('entra'); sonar('tilin'); papinHace('risa'); }
     var glo = box.querySelector('.glo'); glo.textContent = '';
     glo.appendChild(document.createTextNode(s.txt)); glo.appendChild(h('br'));
     var si = h('button', { type: 'button', text: s.btn }), no = h('button', { type: 'button', class: 'sug-no', text: 'No, gracias' });
@@ -3125,7 +3164,7 @@ body{
   function relojEta(w) {
     var el = $('rc-eta'); if (!el || !w) return;
     var now = Date.now();
-    if (!w.eta) { el.hidden = false; el.innerHTML = '<span class="esperando">Esperando que la cocina lo confirme<i>.</i><i>.</i><i>.</i></span>'; return; }
+    if (!w.eta) { el.hidden = false; el.innerHTML = '<span class="esperando">En un ratito lo toma la cocina<i>.</i><i>.</i><i>.</i></span>'; return; }
     var total = Math.max(60000, w.eta - (w.since || now)), falta = w.eta - now, pct = Math.max(4, Math.min(100, 100 * (1 - falta / total)));
     var de = new Date(w.eta), hh = ('0' + de.getHours()).slice(-2) + ':' + ('0' + de.getMinutes()).slice(-2);
     var txt = falta > 60000 ? 'Faltan ~<b>' + Math.ceil(falta / 60000) + ' min</b> · listo aprox. a las ' + hh : 'Ya casi, lo estamos terminando 🔥';
@@ -3138,17 +3177,192 @@ body{
     var prev = visto[w.code];
     if (st === 'wait') {
       var many = (w.count || 1) > 1;
-      $('rc-hero-t').textContent = fase === 'cocina' ? (many ? '🔥 ¡Ya están en la cocina!' : '🔥 ¡Ya está en la cocina!') : '🧾 Recibimos tu pedido';
+      $('rc-hero-t').textContent = fase === 'cocina' ? (many ? '🔥 ¡Ya están en la cocina!' : '🔥 ¡Ya está en la cocina!') : '📨 Le llegó a Papin';
       relojEta(w);
     }
     if (fase === 'listo') selloListo(prev && prev !== 'listo');
     if (prev && prev !== fase) {
-      if (fase === 'cocina') { sonido('tilin'); vibrar(80); }
-      if (fase === 'listo') { sonido('pum'); setTimeout(function () { sonido('tilin'); }, 260); vibrar([120, 60, 120]); }
+      if (fase === 'cocina') { sonar('tilin'); vibrar(80); papinHace('estrellas'); decir('¡Ya está en la cocina! 🔥', 'Faltan unos minutitos.'); }
+      if (fase === 'listo') { sonar('pum'); setTimeout(function () { sonar('hinchada'); papelPicado(); papinHace('festeja'); decir('¡YA ES TUYO! Vení a buscarlo 😏'); }, 300); vibrar([120, 60, 120, 60, 200]); }
     }
     visto[w.code] = fase;
   }
   setInterval(function () { if (!$('receipt').hidden) { var w = findWatch(current); if (w && w.state === 'wait') relojEta(w); } }, 15000);
+
+  // ═════════ ANIMACIONES v2: Papin en todos lados, voz, hinchada, caja animada, guardar comprobante ═════════
+  // Animaciones siempre activas; quien quiera las baja con "Menos movimiento 🐢" en el menú de Papin
+  var menosMov = false; try { menosMov = localStorage.getItem('dp-quieto') === '1'; } catch (e) {}
+  if (menosMov) document.documentElement.classList.add('quieto');
+  // Los celulares no dejan sonar nada hasta el primer toque: lo que quedó pendiente suena ahí
+  var tocado = false, sonidoPendiente = null;
+  document.addEventListener('pointerdown', function () {
+    if (tocado) return; tocado = true;
+    if (sonidoPendiente) { var s = sonidoPendiente; sonidoPendiente = null; setTimeout(function () { sonar(s); }, 60); }
+  }, true);
+  function sonar(tipo) { if (!tocado) { sonidoPendiente = tipo; return; } if (tipo === 'hinchada') hinchada(); else sonido(tipo); }
+  // Voz de Papin: blips suaves mientras se escribe el globo
+  var ultimoBlip = 0;
+  function blip() {
+    if (mudo || !tocado) return;
+    var now = performance.now(); if (now - ultimoBlip < 55) return; ultimoBlip = now;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      var o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime;
+      o.type = 'triangle'; o.frequency.setValueAtTime(380 + Math.random() * 160, t0);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.05, t0 + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
+      o.connect(g); g.connect(actx.destination); o.start(t0); o.stop(t0 + 0.06);
+    } catch (e) {}
+  }
+  // Fibrón al escribir el nombre en la caja
+  var ultimoFib = 0;
+  function fibron() {
+    if (mudo || !tocado) return;
+    var now = performance.now(); if (now - ultimoFib < 110) return; ultimoFib = now;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      var n = actx.sampleRate * 0.07, buf = actx.createBuffer(1, n, actx.sampleRate), d = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      var src = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
+      f.type = 'bandpass'; f.frequency.value = 3200; g.gain.value = 0.06;
+      src.buffer = buf; src.connect(f); f.connect(g); g.connect(actx.destination); src.start();
+    } catch (e) {}
+  }
+  // Festejo de hinchada sintetizado: bombo, aplausos y silbato (sin archivos)
+  function hinchada() {
+    if (mudo) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+      var t0 = actx.currentTime;
+      [0, 0.32, 0.64, 1.1, 1.42, 1.74].forEach(function (t) {
+        var o = actx.createOscillator(), g = actx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(110, t0 + t); o.frequency.exponentialRampToValueAtTime(45, t0 + t + 0.25);
+        g.gain.setValueAtTime(0.0001, t0 + t); g.gain.exponentialRampToValueAtTime(0.5, t0 + t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + t + 0.3);
+        o.connect(g); g.connect(actx.destination); o.start(t0 + t); o.stop(t0 + t + 0.32);
+      });
+      var largo = 2.6, n = Math.floor(actx.sampleRate * largo), buf = actx.createBuffer(1, n, actx.sampleRate), d = buf.getChannelData(0);
+      for (var k = 0; k < 140; k++) {
+        var ini = Math.floor(Math.random() * (n - 2000)), dur = 600 + Math.floor(Math.random() * 900), amp = 0.5 + Math.random() * 0.5;
+        for (var i = 0; i < dur; i++) d[ini + i] += (Math.random() * 2 - 1) * amp * Math.exp(-i / 180);
+      }
+      var src = actx.createBufferSource(), f = actx.createBiquadFilter(), g2 = actx.createGain();
+      f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 0.7;
+      g2.gain.setValueAtTime(0.0001, t0); g2.gain.exponentialRampToValueAtTime(0.32, t0 + 0.3); g2.gain.setValueAtTime(0.32, t0 + 1.8); g2.gain.exponentialRampToValueAtTime(0.0001, t0 + largo);
+      src.buffer = buf; src.connect(f); f.connect(g2); g2.connect(actx.destination); src.start(t0);
+      var w = actx.createOscillator(), wg = actx.createGain(), lfo = actx.createOscillator(), lg = actx.createGain();
+      w.type = 'sine'; w.frequency.value = 2300; lfo.frequency.value = 28; lg.gain.value = 120; lfo.connect(lg); lg.connect(w.frequency);
+      wg.gain.setValueAtTime(0.0001, t0 + 2.0); wg.gain.exponentialRampToValueAtTime(0.09, t0 + 2.05); wg.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.55);
+      w.connect(wg); wg.connect(actx.destination); w.start(t0 + 2.0); lfo.start(t0 + 2.0); w.stop(t0 + 2.6); lfo.stop(t0 + 2.6);
+    } catch (e) {}
+  }
+  // Movimientos de Papin
+  function papinHace(tipo) {
+    var ch = $('chef'); if (!ch) return;
+    ch.classList.remove('habla', 'saluda', 'festeja', 'risa');
+    void ch.offsetWidth;
+    ch.classList.add(tipo);
+    if (tipo === 'festeja' || tipo === 'estrellas') {
+      var a = $('asis'); if (!a || menosMov) return;
+      for (var i = 0; i < 6; i++) { var e = h('i', { class: 'chispa', text: ['✨', '⭐', '🎉'][i % 3] }); e.style.setProperty('--ang', (i * 60) + 'deg'); a.appendChild(e); setTimeout(function (x) { return function () { x.remove(); }; }(e), 900); }
+    }
+  }
+  function papinPiensa(on) { var a = $('asis'); if (a) a.classList.toggle('piensa', !!on); }
+  // Lugar de Papin según la pantalla (pago y comprobante: más arriba y por encima)
+  function lugarPapin() {
+    var a = $('asis'); if (!a) return;
+    var enPago = !$('cart').hidden, enRc = !$('receipt').hidden;
+    a.classList.toggle('en-pago', enPago); a.classList.toggle('en-rc', enRc && !enPago);
+    a.hidden = !$('sheet-bg').hidden;
+  }
+  function ventanaBloquea() { return !$('sheet-bg').hidden || !!document.querySelector('.club-sheet, .orders-sheet'); }
+  // Caja del paso 1: entra abierta y los productos caen adentro
+  function cajaLlena(slot) {
+    var cj = slot && slot.querySelector('.caja'); if (!cj) return;
+    cj.classList.add('abierta');
+    var n = state.lines.length, lista = state.lines.slice(0, 6), cuenta = cj.querySelector('.cuenta');
+    if (cuenta) cuenta.textContent = '0 adentro';
+    lista.forEach(function (l, i) {
+      var p = ALL[l.key]; if (!p) return;
+      var im = h('img', { class: 'cae', alt: '', src: IMG[p.img || p.key] || IMG.papas });
+      im.style.setProperty('--x', (18 + (i % 3) * 22 + Math.random() * 6) + '%');
+      im.style.setProperty('--d', (menosMov ? 0 : i * 0.2) + 's');
+      im.style.setProperty('--r', (Math.random() * 30 - 15) + 'deg');
+      cj.appendChild(im);
+      setTimeout(function () {
+        if (cuenta) cuenta.textContent = (i + 1 === n || i === lista.length - 1) ? (n === 1 ? '1 cosa adentro' : n + ' cosas adentro') : (i + 1) + ' adentro';
+        sonar('pop');
+      }, menosMov ? 0 : i * 200 + 420);
+    });
+  }
+  // ── Guardar comprobante como imagen (en el celu: galería o "Guardar imagen")
+  function guardarComprobante(datos, btn) {
+    var W = 1080, H = 1500, c = document.createElement('canvas'); c.width = W; c.height = H;
+    var x = c.getContext('2d');
+    var fD = getComputedStyle(document.documentElement).getPropertyValue('--f-display') || 'Georgia', fB = 'Archivo, Arial, sans-serif', fH = getComputedStyle(document.documentElement).getPropertyValue('--f-hand') || 'cursive';
+    x.fillStyle = '#F8EDD6'; x.fillRect(0, 0, W, H);
+    for (var i = 0; i < W; i += 30) for (var j = 0; j < 2; j++) { x.fillStyle = (i / 30 + j) % 2 ? '#fff' : '#2A2A31'; x.fillRect(i, j * 15, 15, 15); x.fillRect(i + 15, j * 15 + (j ? -15 : 15), 15, 15); }
+    var logo = document.querySelector('.logo');
+    if (logo && logo.complete) { var lw = 300, lh = lw * logo.naturalHeight / logo.naturalWidth; x.drawImage(logo, (W - lw) / 2, 60, lw, lh); }
+    var y = 420;
+    x.fillStyle = '#C9A47A'; x.fillRect(90, y, W - 180, 360); x.fillStyle = '#DDBF98'; x.fillRect(80, y - 40, W - 160, 70);
+    x.fillStyle = '#33200F'; x.textAlign = 'center';
+    x.font = '700 40px ' + fB; x.fillText('TU CÓDIGO DE RETIRO', W / 2, y + 90);
+    x.font = '170px ' + fD; x.fillText(datos.code || '----', W / 2, y + 260);
+    x.font = '700 64px ' + fH; x.fillStyle = '#1f2340'; x.fillText((datos.name || '') + ' ♥', W / 2, y + 335);
+    y += 440; x.textAlign = 'left'; x.fillStyle = '#33200F';
+    x.font = '700 34px ' + fB; x.fillText('Tu pedido', 100, y); y += 20;
+    x.font = '30px ' + fB;
+    (datos.items || []).slice(0, 8).forEach(function (it) { y += 46; var t = '• ' + it; x.fillText(t.length > 52 ? t.slice(0, 51) + '…' : t, 100, y); });
+    y += 70; x.font = '700 40px ' + fB; x.fillText('Total: ' + (datos.total || ''), 100, y);
+    y += 50; x.font = '28px ' + fB; x.fillText(datos.date || '', 100, y);
+    x.fillStyle = '#B3402A'; x.font = '700 32px ' + fB; x.textAlign = 'center';
+    x.fillText('📍 Olavarría 622, Crucecita · Avellaneda', W / 2, H - 120);
+    x.fillStyle = '#33200F'; x.font = '28px ' + fB; x.fillText('Miércoles a domingo, de 19 a 23 · Mostrá este código al retirar', W / 2, H - 70);
+    c.toBlob(function (blob) {
+      if (!blob) return;
+      var nombre = 'Comprobante Doña Papina ' + (datos.code || '') + '.png';
+      var file = null; try { file = new File([blob], nombre, { type: 'image/png' }); } catch (e) {}
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Comprobante Doña Papina' }).catch(function () {});
+      } else {
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+      }
+      if (btn) { btn.textContent = '✅ Guardado'; setTimeout(function () { btn.textContent = '📥 Guardar comprobante'; }, 2200); }
+      sonar('pop');
+    }, 'image/png');
+  }
+
+  // ───── Letra chica de La Banda (los números salen de la planilla) ─────
+  function letraChica(reglas, ben) {
+    var r = reglas || {}, b = ben || {};
+    var cada = Number(r.cada) || 4, bp = Number(r.bienvPct) || 10, ap = Number(r.amigoPct) || 15, cd = Number(r.cumpleDias) || 30, cp = Number(r.cumplePedidos) || 2;
+    var ops = function (x) { var a = x && x.opciones ? x.opciones.filter(function (o) { return !o.sinStock; }).map(function (o) { return o.n; }) : []; return a.length ? ' (' + a.join(', ') + ')' : ''; };
+    var out = [];
+    if (b.bienvenida) out.push(['🎁', 'Bienvenida', bp + '% off en tu primer pedido como parte de la banda. No se suma con otros códigos de descuento.']);
+    if (b.sellos) out.push(['🏅', 'Sellos', 'Cada ' + cada + ' pedidos con hamburguesa o combo, te ganás un premio a elección' + ops(b.sellos) + '. Suma un sello por día, aunque hagas varios pedidos. Si no usás el premio, te lo guardamos para la próxima.']);
+    if (b.cumple) out.push(['🎂', 'Cumpleaños', 'Durante todo el mes de tu cumple, Papin te regala un combo a elección' + ops(b.cumple) + '. Va de regalo dentro de un pedido. Tenés que ser de la banda hace al menos ' + cd + ' días y haber hecho ' + cp + ' pedidos antes de ese mes. Una vez por año, y la fecha que cargás no se puede cambiar.']);
+    if (b.amigo) out.push(['🤝', 'Traé a un amigo', 'Compartí tu código. Tu amigo, si es nuevo, tiene ' + ap + '% off en su primer pedido, y vos te ganás un premio' + ops(b.amigo) + ' cuando lo hace.']);
+    out.push(['📍', 'Dónde valen', 'Los beneficios valen solo para pedidos hechos desde soypapina.com.ar (no por PedidosYa ni otras apps).']);
+    return out;
+  }
+  function abrirCondiciones() {
+    var old = document.querySelector('.cond-sheet'); if (old) old.remove();
+    var sheet = h('div', { class: 'club-sheet cond-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Condiciones de La Banda' });
+    var box = h('div', { class: 'club-box' }); sheet.appendChild(box); document.body.appendChild(sheet);
+    var cerrar = function () { sheet.remove(); };
+    sheet.addEventListener('click', function (e) { if (e.target === sheet) cerrar(); });
+    var pintar = function (d) {
+      box.textContent = '';
+      box.appendChild(h('h3', { text: 'Letra chica (pero clarita) 😉' }));
+      letraChica(d && d.reglas, d && d.beneficios).forEach(function (x) { box.appendChild(h('p', { class: 'cond-p' }, [h('b', { text: x[0] + ' ' + x[1] + ': ' }), x[2]])); });
+      var ok = h('button', { type: 'button', class: 'go', text: 'Entendido' }); ok.onclick = cerrar;
+      box.appendChild(h('div', { class: 'club-actions' }, [ok]));
+    };
+    var d = banda.data;
+    if (d && d.reglas) pintar(d);
+    else { box.appendChild(h('p', { class: 'bc-lead', text: 'Cargando…' })); pedirEstado('').then(function (x) { pintar(x || {}); }); }
+  }
 
   // ───── arranque ─────
   function init() {
