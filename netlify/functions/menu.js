@@ -54,6 +54,15 @@ const CATALOG = {
     p_cla: { id: 185, code: "PC", name: "PAPAS CLASICAS CHICAS",  price: 0, bread: false, fries: false, sauce: false, drink: false, extras: true, available: true, needLive: true },
     p_saz: { id: 186, code: "PS", name: "PAPAS SAZONADAS CHICAS", price: 0, bread: false, fries: false, sauce: false, drink: false, extras: true, available: true, needLive: true },
 
+    // ─── Dips sueltos (también van en los premios de La Banda) ───
+    d_tasty:   { id: 226, code: "DT", name: "DIP SALSA TASTY", price: 0, bread: false, fries: false, sauce: false, drink: false, extras: false, available: true, needLive: true },
+    d_honey:   { id: 227, code: "DH", name: "DIP SALSA HONEY", price: 0, bread: false, fries: false, sauce: false, drink: false, extras: false, available: true, needLive: true },
+    d_mayo:    { id: 228, code: "DM", name: "DIP MAYONESA",    price: 0, bread: false, fries: false, sauce: false, drink: false, extras: false, available: true, needLive: true },
+    d_ketchup: { id: 229, code: "DK", name: "DIP KETCHUP",     price: 0, bread: false, fries: false, sauce: false, drink: false, extras: false, available: true, needLive: true },
+    d_mostaza: { id: 230, code: "DMO", name: "DIP MOSTAZA",    price: 0, bread: false, fries: false, sauce: false, drink: false, extras: false, available: true, needLive: true },
+    d_bbq:     { id: 231, code: "DB", name: "DIP BBQ",         price: 0, bread: false, fries: false, sauce: false, drink: false, extras: false, available: true, needLive: true },
+    d_alioli:  { id: 232, code: "DA", name: "DIP ALIOLI",      price: 0, bread: false, fries: false, sauce: false, drink: false, extras: false, available: true, needLive: true },
+
     // ─── Producto de prueba (ID 234 "Prueba MP"): solo aparece con soypapina.com.ar/?prueba=1 ───
     // Si se desactiva o se borra en Thinkion, deja de poder pedirse (no tiene precio de respaldo).
     prueba: { id: 234, code: "PR", name: "Prueba MP", price: 0, bread: false, fries: false, sauce: false, drink: false, extras: false, available: true, needLive: true },
@@ -94,9 +103,13 @@ const CATALOG = {
 // Descuentos: los mismos que existen en Thinkion (id = id_discount en Thinkion).
 CATALOG.discounts = {
   d10:    { id: 1, name: "Descuento 10% off", percent: 10 },
-  duenos: { id: 2, name: "Consumo dueños",    percent: 99 },
+  duenos: { id: 2, name: "Consumo dueños",    percent: 100 },
   casa:   { id: 3, name: "Invita la casa",    percent: 100 },
+  d15:    { id: 4, name: "Descuento 15 off",  percent: 15 },
+  d50:    { id: 5, name: "Descuento 50 off",  percent: 50 },
 };
+// El porcentaje real de cada código lo manda la pestaña "Descuentos" de "Clientes y Banda".
+const keyDeDescuento = (id) => Object.keys(CATALOG.discounts).find((k) => CATALOG.discounts[k].id === Number(id)) || "";
 
 // Códigos que se le pueden dar a un cliente. Cada código apunta a un descuento.
 //   expires (opcional): último día válido, formato "2026-12-31" (hora de Argentina).
@@ -437,6 +450,46 @@ function resolveCoupon(raw, opts) {
   return { ok: true, code, key: def.discount, id: d.id, name: d.name, percent: d.percent };
 }
 
+// ───── Códigos y beneficios desde la planilla "Clientes y Banda" (pestaña Descuentos) ─────
+async function planilla(payload, timeoutMs) {
+  const url = process.env.CLIENTES_URL, key = process.env.CLIENTES_KEY;
+  if (!url || !key) return null;
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), timeoutMs || 7000);
+  try {
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, redirect: "follow", signal: ctrl.signal,
+      body: JSON.stringify(Object.assign({ clave: key }, payload)) });
+    return await r.json().catch(() => null);
+  } catch (e) { console.warn("Planilla:", e && e.message); return null; } finally { clearTimeout(t); }
+}
+// Valida un código contra la pestaña Descuentos (vencimiento, usos, activo). Misma forma que resolveCoupon.
+async function resolverCodigo(raw) {
+  const code = String(raw == null ? "" : raw).toUpperCase().replace(/\s+/g, "").slice(0, 30);
+  const generic = "Ese código no es válido o ya venció.";
+  if (!code) return fail(generic);
+  const d = await planilla({ accion: "cupon", codigo: code }, 7000);
+  if (!d) return { ok: false, error: "No pudimos verificar el código. Probá de nuevo en unos segundos.", retry: true };
+  if (!d.ok) return fail(d.error || generic);
+  const key = keyDeDescuento(d.id);
+  if (!key) return fail(generic);
+  return { ok: true, code, key, id: Number(d.id), name: d.nombre || CATALOG.discounts[key].name, percent: Math.max(0, Math.min(100, Number(d.percent) || 0)) };
+}
+// Anota que se usó un código (para el límite de usos). Si falla, el pedido sigue igual.
+async function usarCodigo(code, pedido) {
+  if (!code || /^BANDA-/.test(code)) return;
+  await planilla({ accion: "cupon-uso", codigo: code, pedido: String(pedido || "") }, 6000);
+}
+// Descuento de La Banda para este pedido (bienvenida 10% o recomendado 15%), según la planilla
+async function descuentoBanda(phone, club, amigo) {
+  if (!phone) return null;
+  const d = await planilla({ accion: "estado", telefono: phone, amigo: String(amigo || "").toUpperCase().slice(0, 20) }, 6000);
+  if (!d || !d.ok) return null;
+  const x = d.socio ? d.descuento : (club ? d.descuentoNuevo : null);
+  if (!x || !x.percent) return null;
+  const key = keyDeDescuento(x.id);
+  if (!key) return null;
+  return { ok: true, code: x.amigo ? "BANDA-AMIGO" : "BANDA-BIENVENIDA", key, id: Number(x.id), name: x.nombre, percent: Number(x.percent), motivo: x.amigo ? "amigo" : "bienvenida" };
+}
+
 // Descuento en pesos enteros. La carta usa exactamente la misma cuenta.
 function applyDiscount(subtotal, percent) {
   const p = Math.max(0, Math.min(100, Number(percent) || 0));
@@ -482,7 +535,7 @@ function cleanPhone(v) {
 // Regalos que eligió el cliente: { bienvenida: "Papas chicas", cumple: "Postre", sellos: "Coca-Cola 500" }.
 // Llega como objeto (desde la carta) o como texto "bienvenida=Papas chicas;sellos=Coca-Cola 500"
 // (así viaja en la metadata de Mercado Pago). El sheet vuelve a validar todo antes de entregar.
-const TIPOS_REGALO = ["bienvenida", "cumple", "sellos"];
+const TIPOS_REGALO = ["bienvenida", "cumple", "sellos", "amigo"];
 function parseElegidos(v) {
   const out = {};
   let src = v;
@@ -519,6 +572,8 @@ async function clienteDelPedido(o, timeoutMs) {
         cumple: cleanText(o.cumple, 5),
         elegidos: parseElegidos(o.elegidos),
         codigo: String(o.code || ""), total: Number(o.total) || 0, pedido: String(o.orderId || ""),
+        descuentoBanda: String(o.bandaDesc || ""), amigo: String(o.amigo || "").toUpperCase().slice(0, 20),
+        hamburguesa: (o.lines || []).some((l) => /^(s_|lpp|pn|ltp)/.test(l.key) || !/^(p_|d_|prueba)/.test(l.key)),
         productos: (o.lines || []).map((l) => (CATALOG.products[l.key] || {}).code || (CATALOG.products[l.key] || {}).name || l.key),
       }),
       redirect: "follow",
@@ -682,6 +737,9 @@ exports.compactCart = compactCart;
 exports.expandCart = expandCart;
 exports.buildThinkionItems = buildThinkionItems;
 exports.resolveCoupon = resolveCoupon;
+exports.resolverCodigo = resolverCodigo;
+exports.usarCodigo = usarCodigo;
+exports.descuentoBanda = descuentoBanda;
 exports.applyDiscount = applyDiscount;
 exports.buildThinkionOrder = buildThinkionOrder;
 exports.sendToThinkion = sendToThinkion;

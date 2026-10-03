@@ -190,6 +190,43 @@ async function encuestasPendientes(store, now) {
   }
 }
 
+// ───── Pausa automática si la cocina se llena (lo calcula el KDS: hamburguesas/combos sin terminar) ─────
+const CARGA = { aviso: 7, pausa: 10, reanuda: 5 };
+const SITE = process.env.SITE_URL || "https://soypapina.com.ar";
+async function telegram(texto, boton) {
+  // Lo manda el Apps Script de Clientes (ya tiene el bot y el grupo); si falla, la pausa funciona igual
+  const url = process.env.CLIENTES_URL, key = process.env.CLIENTES_KEY;
+  if (!url || !key) return;
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, redirect: "follow", signal: ctrl.signal,
+      body: JSON.stringify({ clave: key, accion: "telegram", texto, boton_texto: boton ? boton.texto : "", boton_url: boton ? boton.url : "" }) });
+  } catch (e) { console.warn("Telegram:", e && e.message); } finally { clearTimeout(t); }
+}
+async function controlCarga(store, carga, now) {
+  if (!Number.isFinite(carga) || carga < 0) return;
+  const cfg = (await store.get("cfg/paused", { type: "json" })) || {};
+  const auto = (await store.get("cfg/auto", { type: "json" })) || {};
+  if (cfg.paused && cfg.auto && carga <= CARGA.reanuda) {
+    await store.setJSON("cfg/paused", { paused: false, at: now });
+    await store.setJSON("cfg/auto", Object.assign({}, auto, { token: "" }));
+    await telegram(`✅ La cocina se descomprimió (${carga} en preparación). Volvimos a tomar pedidos por la web.`);
+    return;
+  }
+  if (!cfg.paused && carga >= CARGA.pausa && now > (auto.overrideUntil || 0)) {
+    const token = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 8);
+    await store.setJSON("cfg/paused", { paused: true, at: now, auto: true });
+    await store.setJSON("cfg/auto", Object.assign({}, auto, { token, pausedAt: now }));
+    await telegram(`🔥 Cocina a full: ${carga} hamburguesas/combos en preparación.\nPausé los pedidos por la web. Se reanudan solos cuando bajen a ${CARGA.reanuda}.`,
+      { texto: "▶️ Reanudar pedidos ahora", url: `${SITE}/.netlify/functions/listos?reanudar=${token}` });
+    return;
+  }
+  if (!cfg.paused && carga >= CARGA.aviso && now - (auto.warnAt || 0) > 20 * 60000) {
+    await store.setJSON("cfg/auto", Object.assign({}, auto, { warnAt: now }));
+    await telegram(`⚠️ Se está llenando la cocina: ${carga} hamburguesas/combos en preparación. Con ${CARGA.pausa} pauso los pedidos web.`);
+  }
+}
+
 exports.handler = async (event) => {
   try {
     const store = openStore(event);
@@ -282,6 +319,7 @@ exports.handler = async (event) => {
           await store.setJSON(`l/${day}/${done}-${rec.order || Math.random().toString(36).slice(2, 7)}`, rec);
         }
         try { await encuestasPendientes(store, now); } catch (e) { console.warn("Encuestas:", e && e.message); }
+        try { await controlCarga(store, Number(b.carga), now); } catch (e) { console.warn("Carga:", e && e.message); }
         const cfg = await store.get("cfg/paused", { type: "json" });
         return reply(200, { ok: true, paused: !!(cfg && cfg.paused) });
       }
@@ -340,6 +378,19 @@ exports.handler = async (event) => {
     if (event.httpMethod !== "GET") return reply(405, { ok: false, error: "Método no permitido" });
 
     const q = event.queryStringParameters || {};
+    // Botón "Reanudar pedidos" del aviso de Telegram
+    if (q.reanudar) {
+      const auto = (await store.get("cfg/auto", { type: "json" })) || {};
+      const okTok = auto.token && String(q.reanudar) === auto.token;
+      if (okTok) {
+        await store.setJSON("cfg/paused", { paused: false, at: now });
+        // durante 30 minutos no se vuelve a pausar sola (la decisión fue de ustedes)
+        await store.setJSON("cfg/auto", Object.assign({}, auto, { token: "", overrideUntil: now + 30 * 60000 }));
+        await telegram("▶️ Pedidos web reanudados a mano. Por 30 minutos no se pausan solos.");
+      }
+      return { statusCode: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+        body: `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:system-ui;background:#F8EDD6;color:#33200F;text-align:center;padding:40px 20px"><h1 style="font-size:28px">${okTok ? "✅ Pedidos reanudados" : "Este botón ya se usó"}</h1><p>${okTok ? "La carta vuelve a tomar pedidos. Por 30 minutos no se pausa sola." : "Los pedidos ya estaban reanudados."}</p></body>` };
+    }
 
     // ───── ¿Pedidos web en pausa? ─────
     if (q.estado) {

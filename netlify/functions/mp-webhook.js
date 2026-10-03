@@ -12,7 +12,7 @@
 //    Pago vuelve a avisar solo, varias veces. Thinkion evita duplicados porque
 //    el id del pedido es siempre el id del pago.
 
-const { CATALOG, expandCart, buildThinkionOrder, sendToThinkion, clienteDelPedido, pickupCodeFor, parseElegidos } = require("./menu");
+const { CATALOG, expandCart, buildThinkionOrder, sendToThinkion, clienteDelPedido, pickupCodeFor, parseElegidos, usarCodigo } = require("./menu");
 
 // id_payment de "Mercado Pago" dentro de Thinkion (tabla payment_method, fila id=15)
 const ID_PAYMENT_MERCADO_PAGO = 15;
@@ -103,6 +103,7 @@ exports.handler = async (event) => {
       phone: metadata.phone, name: metadata.customer_name, club: !!metadata.club, promos: !!metadata.promos, cumple: metadata.cumple || "",
       elegidos: parseElegidos(metadata.regalos || ""),
       code: metadata.group_with || pickupCodeFor(orderId), orderId, total: paid, lines: norm.lines,
+      bandaDesc: metadata.banda_desc || "", amigo: metadata.amigo || "",
     }, 8000) : null;
     const order = buildThinkionOrder({
       phone: metadata.phone,
@@ -137,6 +138,7 @@ exports.handler = async (event) => {
     }
 
     console.log(`Pedido ${orderId} cargado y confirmado en Thinkion`);
+    if (metadata.coupon) { try { await usarCodigo(String(metadata.coupon), orderId); } catch (e) { console.warn("Uso de código:", e && e.message); } }
     return ok({ ok: true, id_order: orderId });
   } catch (err) {
     console.error("Error inesperado en webhook:", err);

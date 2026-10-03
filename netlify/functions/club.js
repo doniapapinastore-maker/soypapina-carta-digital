@@ -68,7 +68,8 @@ exports.handler = async (event) => {
   if (b.accion === "estado") {
     const telefono = String(b.telefono || "").replace(/\D/g, "");
     try {
-      const d = await appsScript({ accion: "estado", telefono: telefono.length >= 8 && telefono.length <= 13 ? telefono : "" }, 7000);
+      const amigo = String(b.amigo || "").toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 20);
+      const d = await appsScript({ accion: "estado", telefono: telefono.length >= 8 && telefono.length <= 13 ? telefono : "", amigo }, 7000);
       if (!d || !d.ok) return json(502, { ok: false });
       return json(200, d);
     } catch (err) {
@@ -110,7 +111,8 @@ exports.handler = async (event) => {
   if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return json(400, { ok: false, error: "Revisá el mail, parece que le falta algo." });
 
   try {
-    const d = await appsScript({ accion: "club", telefono, nombre, cumple, mail, barrio: clean(b.barrio, 60), promos: !!b.promos }, 9000);
+    const d = await appsScript({ accion: "club", telefono, nombre, cumple, mail, barrio: clean(b.barrio, 60), promos: !!b.promos,
+      amigo: String(b.amigo || "").toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 20) }, 9000);
     if (d && d.configError) return json(500, { ok: false, error: "La Banda todavía no está configurada." });
     if (!d || !d.ok) return json(502, { ok: false, error: "No pudimos guardar tus datos. Probá de nuevo en un rato." });
     return json(200, { ok: true, nuevo: !!d.nuevo, bienvenidaEntregada: !!d.bienvenidaEntregada });

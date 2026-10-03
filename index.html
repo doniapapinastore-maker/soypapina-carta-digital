@@ -697,6 +697,41 @@ body{
 .para-chip[aria-pressed="true"]{background:var(--ink);color:var(--cream)}
 .para-mas{border-style:dashed}
 .para-in{margin-top:8px;width:100%}
+/* ═════ experiencia WOW ═════ */
+.caja .sello{left:9%;top:34%;width:29%;max-height:56%}
+.caja .tapa{transform-origin:6% 100%}
+.caja.abre .tapa{animation:abreTapa .6s ease-out}
+@keyframes abreTapa{35%{transform:rotate(-14deg) translateY(-6px)}}
+.caja.cierra .tapa{animation:cierraTapa .7s ease-out}
+@keyframes cierraTapa{from{transform:rotate(-26deg) translateY(-16px)}70%{transform:rotate(3deg)}}
+.caja.cierra .sello{animation:sellaCaja .45s .6s both}
+@keyframes sellaCaja{from{transform:rotate(-6deg) scale(1.9);opacity:0}65%{transform:rotate(-6deg) scale(.92);opacity:.9}}
+.sello-listo{position:absolute;left:52%;top:56%;transform:translate(-50%,-50%) rotate(-11deg);border:4px solid #B3402A;outline:2px solid #B3402A;outline-offset:3px;color:#B3402A;background:#fff8e7b3;padding:5px 14px 6px;text-align:center;border-radius:8px;line-height:1.05;z-index:2;white-space:nowrap}
+.sello-listo b{display:block;font-family:var(--f-display);font-weight:400;font-size:clamp(20px,6.5vw,28px);letter-spacing:1px}
+.sello-listo span{display:block;font-family:var(--f-hand);font-weight:700;font-size:clamp(16px,5vw,21px);color:var(--ink)}
+.sello-listo.golpe{animation:golpe .5s cubic-bezier(.2,1.4,.4,1)}
+@keyframes golpe{from{transform:translate(-50%,-50%) rotate(-11deg) scale(2.6);opacity:0}70%{transform:translate(-50%,-50%) rotate(-11deg) scale(.9);opacity:1}}
+.caja.humea .humo{position:absolute;top:-4%;width:26px;height:26px;border-radius:50%;background:#ffffffcc;filter:blur(4px);opacity:0;animation:humo 2.8s ease-out infinite;pointer-events:none}
+.humo.h1{left:30%}.humo.h2{left:50%;animation-delay:.9s!important}.humo.h3{left:68%;animation-delay:1.8s!important}
+@keyframes humo{0%{transform:translateY(0) scale(.5);opacity:0}25%{opacity:.85}100%{transform:translateY(-60px) scale(1.6);opacity:0}}
+#rc-eta{display:flex;flex-direction:column;gap:6px}
+.reloj-b{display:block;height:8px;border-radius:5px;background:#E3CFAE;overflow:hidden}
+.reloj-b i{display:block;height:100%;background:var(--green);border-radius:5px;transition:width 1s ease}
+.esperando i{animation:punto 1.2s infinite;font-style:normal}
+.esperando i:nth-child(2){animation-delay:.2s}.esperando i:nth-child(3){animation-delay:.4s}
+@keyframes punto{0%,100%{opacity:.2}50%{opacity:1}}
+.prog{margin:10px 0 4px}
+.prog-b{height:10px;border-radius:6px;background:#E3CFAE;overflow:hidden}
+.prog-b i{display:block;height:100%;width:0;background:var(--red);border-radius:6px;transition:width .2s linear}
+.prog.ok .prog-b i{background:var(--green)}
+.prog-t{display:block;margin-top:5px;font-size:13px;font-weight:800;color:var(--ink);text-align:center}
+.picado{position:fixed;inset:0;pointer-events:none;z-index:600}
+.pay-btn:active,.add:active,.go:active,.bnd-b:active,.para-chip:active,.globo .opc button:active,.dice .glo button:active,.tab:active{transform:scale(.95)}
+.pay-btn,.add,.go,.bnd-b,.para-chip,.tab{transition:transform .08s}
+.dice .glo .sug-no{background:none;border:0;text-decoration:underline;font-weight:700;color:var(--brown);margin-left:4px}
+.globo .preg{display:flex;gap:6px;margin-top:10px}
+.globo .preg input{flex:1;min-width:0;font-family:var(--f-body);font-size:15px;padding:8px 10px;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.caja .tapa,.caja .sello,.sello-listo,.humo{animation:none!important}}
 </style>
 </head>
 <body>
@@ -787,6 +822,8 @@ body{
         </div>
         <div class="sec"><b>PAPAS</b><i></i></div>
         <div class="grid" id="grid-papas"></div>
+        <div class="sec"><b>DIPS PARA MOJAR</b><i></i></div>
+        <div class="grid" id="grid-dips"></div>
       </div>
       <div class="panel soon" data-panel="vacio" role="tabpanel" hidden><b>PLATOS AL VACÍO</b><span>Comida casera lista para tu semana. Muy pronto.</span></div>
       <div class="panel soon" data-panel="bebidas" role="tabpanel" hidden><b>BEBIDAS</b><span>Por ahora las bebidas vienen en los combos. Solas, muy pronto.</span></div>
@@ -860,6 +897,9 @@ body{
               <select class="field" id="club-month" style="width:auto;padding:4px 6px"></select>
             </div>
             <label class="club-check sub"><input type="checkbox" id="club-promos"> <span>Quiero que Papina me cuente sus promos (opcional)</span></label>
+            <div class="club-check sub" style="cursor:default;flex-wrap:wrap"><span>🤝 ¿Te recomendó alguien de la banda?</span>
+              <input class="field" id="club-amigo" maxlength="20" autocomplete="off" placeholder="Su código, ej.: ZOE-4417" style="text-transform:uppercase"></div>
+            <p class="bp-s" id="club-amigo-msg" hidden></p>
           </div>
           <div class="bp" id="banda-pick" hidden></div>
         </div>
@@ -1272,7 +1312,7 @@ body{
     } else {
       state.lines.push({ uid: state.uid++, key: sh.key, sel: sel });
       var kv = sh.key, fr = fraseAgregado(name);
-      setTimeout(function () { volar(kv, function () { toast(fr); }); }, 30);
+      setTimeout(function () { volar(kv, function () { sonido('pop'); toast(fr); }); }, 30);
     }
     closeSheet();
     paintCards();
@@ -1284,8 +1324,9 @@ body{
     return state.lines.reduce(function (s, l) { return s + price(l.key); }, 0);
   }
   // Mismo cálculo que hace el servidor: descuento en pesos enteros
+  function cupEf() { return state.coupon || state.bandaDesc || null; }
   function pricing() {
-    var sub = total(), pct = state.coupon ? state.coupon.percent : 0;
+    var sub = total(), cE = cupEf(), pct = cE ? cE.percent : 0;
     var d = Math.round(sub * pct / 100);
     return { subtotal: sub, discount: d, pay: sub - d };
   }
@@ -1314,17 +1355,17 @@ body{
       });
       box.appendChild(ul);
     }
-    var pr = pricing(), n = state.lines.length, has = n > 0, showDisc = has && !!state.coupon && pr.discount > 0;
+    var pr = pricing(), n = state.lines.length, has = n > 0, showDisc = has && !!cupEf() && pr.discount > 0;
     $('nudge').hidden = n !== 1;
     pintarLds();
     $('total').textContent = money(pr.pay);
-    $('bar-total').textContent = money(pr.pay);
+    contarTotal(pr.pay);
     $('bar-count').textContent = n === 1 ? '1 PRODUCTO' : n + ' PRODUCTOS';
     $('sum-sub').hidden = !showDisc;
     $('sum-disc').hidden = !showDisc;
     if (showDisc) {
       $('sub').textContent = money(pr.subtotal);
-      $('disc-name').textContent = state.coupon.name;
+      $('disc-name').textContent = cupEf().name;
       $('disc').textContent = '−' + money(pr.discount);
     }
     var free = isFree();
@@ -1460,6 +1501,7 @@ body{
     if (state.coupon) payload.coupon = state.coupon.code;
     if (phone && $('club-join').checked && !esSocio()) {
       payload.club = true; payload.promos = $('club-promos').checked;
+      var am = $('club-amigo').value.trim().toUpperCase(); if (am) payload.amigo = am;
       if ($('club-day').value && $('club-month').value) { payload.cumple = $('club-day').value + '/' + $('club-month').value; saveCliente({ cumple: payload.cumple }); }
     }
     // Regalos de La Banda que eligió (lo que no eligió queda guardado para la próxima)
@@ -1487,7 +1529,7 @@ body{
             ref: d.external_reference || '',
             lineas: state.lines.map(function (l) { return { key: l.key, sel: clone(l.sel) }; }),
             banda: d.banda || prevision, tieneCumple: !!((banda.data && banda.tel === phone && banda.data.tieneCumple) || payload.cumple),
-            discount: state.coupon && d.discount > 0 ? { name: state.coupon.name, amount: d.discount, code: state.coupon.code } : null,
+            discount: cupEf() && d.discount > 0 ? { name: cupEf().name, amount: d.discount, code: cupEf().code || '' } : null,
             items: state.lines.map(function (l) { var t = describeText(l), q = paraDe(l); return { name: ALL[l.key].name, detail: t.detail, drink: t.drink, note: (q ? 'Para ' + q + (t.note ? ' · ' + t.note : '') : t.note) }; })
           };
           try { localStorage.setItem('dp-pending-order', JSON.stringify(pending)); } catch (e) { try { sessionStorage.setItem('dp-pending-order', JSON.stringify(pending)); } catch (e2) {} }
@@ -1530,7 +1572,8 @@ body{
     var sub = pending && pending.subtotal != null ? pending.subtotal : null;
     var refId = free ? (opts.orderId || '') : paymentId;
 
-    $('rc-title-t').textContent = (free ? '¡Pedido confirmado!' : '¡Pago aprobado!') + ' Ya está en la cocina.';
+    $('rc-title-t').textContent = free ? '¡Pedido confirmado!' : '¡Pago aprobado!';
+    setTimeout(function () { sonido('fiesta'); papelPicado(); }, 350);
     $('rc-total-l').textContent = free ? 'TOTAL' : 'TOTAL PAGADO';
     $('rc-id-l').textContent = free ? 'N° DE PEDIDO' : 'ID DE PAGO (Mercado Pago)';
     document.querySelector('.rc-mail').hidden = free;
@@ -1538,7 +1581,7 @@ body{
     if (disc) { $('rc-sub-v').textContent = money(sub); $('rc-disc-n').textContent = disc.name; $('rc-disc-v').textContent = '−' + money(disc.amount); }
 
     $('rc-name').textContent = name;
-    $('rc-caja').innerHTML = '<div class="caja"><div class="cuerpo-c"></div><div class="tapa"></div><img class="sello" src="' + IMG.sello + '" alt=""><div class="nom">' + esc(name || 'Tu pedido') + '<span class="cor">♥</span></div></div>';
+    $('rc-caja').innerHTML = '<div class="caja cierra"><div class="cuerpo-c"></div><div class="tapa"></div><img class="sello" src="' + IMG.sello + '" alt=""><div class="nom">' + esc(name || 'Tu pedido') + '<span class="cor">♥</span></div></div>';
     $('rc-date').textContent = dateStr;
     var box = $('rc-items'); box.textContent = '';
     items.forEach(function (i) {
@@ -1719,7 +1762,8 @@ body{
   function isClubMember() { return !!loadCliente().club; }
   function markClubMember(on) { try { var o = loadCliente(); o.club = on !== false; localStorage.setItem('dp-cliente', JSON.stringify(o)); } catch (e) {} }
 
-  var EMOJI_REGALO = { bienvenida: '🎁', cumple: '🎂', sellos: '🏅' };
+  var EMOJI_REGALO = { bienvenida: '🎁', cumple: '🎂', sellos: '🏅', amigo: '🤝' };
+  var DIPS_REGALO = ['Tasty', 'Honey', 'Mayonesa', 'Ketchup', 'Mostaza', 'BBQ', 'Alioli'];
   // Lo que sabemos del celu escrito en el pedido: qué regalos lo esperan y cómo van sus sellos.
   // Se consulta una sola vez por celu, y solo cuando ya hay algo en el pedido (así se gasta poco).
   var banda = { tel: '', data: null, loading: false, picks: {}, timer: null, promesa: null, fallo: false, frenado: false };
@@ -1729,7 +1773,7 @@ body{
   function beneficiosGuardados() { try { var x = JSON.parse(sessionStorage.getItem('dp-banda-ben') || 'null'); return x && Date.now() - x.at < 600000 ? x.d : null; } catch (e) { return null; } }
 
   function pedirEstado(tel) {
-    return fetch(CLUB_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'estado', telefono: tel || '' }) })
+    return fetch(CLUB_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'estado', telefono: tel || '', amigo: ($('club-amigo') && $('club-amigo').value.trim().toUpperCase()) || '' }) })
       .then(function (r) { return r.json().catch(function () { return null; }); })
       .then(function (d) {
         if (!d || !d.ok) return null;
@@ -1787,9 +1831,16 @@ body{
   function cumpleElegido() { return $('club-day').value && $('club-month').value ? $('club-day').value + '/' + $('club-month').value : ''; }
 
   // Qué regalos le corresponden en este pedido (el sheet lo vuelve a controlar al recibirlo)
+  function conHamburguesa() { return state.lines.some(function (l) { var t = tipoLinea(l.key); return t === 'combo' || t === 'sola'; }); }
   function regalosPendientes() {
     var d = banda.data;
     if (!d || !d.beneficios) return [];
+    if (Array.isArray(d.fijos)) {
+      if (!d.socio) return [];
+      var r = d.fijos.filter(function (t) { return d.beneficios[t]; });
+      if (d.beneficios.sellos && d.sellosFaltan === 1 && !d.selloHoy && conHamburguesa()) r.push('sellos');
+      return r;
+    }
     var uniendo = !d.socio && $('club-join').checked;
     if (!d.socio && !uniendo) return [];
     var b = d.beneficios, out = [];
@@ -1806,14 +1857,25 @@ body{
     if (!d || banda.tel !== phone) return null;
     var b = d.beneficios || {};
     return {
-      socio: !!(d.socio || uniendo), pedidos: d.pedidos + 1, usados: d.usados + (elegidos.sellos ? 1 : 0),
-      cada: d.cada, frecuenteDesde: d.frecuenteDesde, sellosActivo: !!b.sellos,
+      socio: !!(d.socio || uniendo), pedidos: d.pedidos + ((d.socio || uniendo) && conHamburguesa() && !d.selloHoy ? 1 : 0), usados: d.usados + (elegidos.sellos ? 1 : 0),
+      cada: d.cada, frecuenteDesde: d.frecuenteDesde, sellosActivo: !!b.sellos, codigoAmigos: d.codigoAmigos || '',
       sellosOpciones: b.sellos ? b.sellos.opciones.filter(function (o) { return !o.sinStock; }).map(function (o) { return o.n; }) : [],
       regalos: Object.keys(elegidos).map(function (t) { return { tipo: t, opcion: elegidos[t] }; })
     };
   }
 
   function refreshClubCheck() {
+    var dd = banda.data, uniendo = !!(dd && !dd.socio && $('club-join').checked);
+    var nuevo = null;
+    if (!state.coupon && dd) {
+      if (dd.socio && dd.descuento) nuevo = dd.descuento;
+      else if (uniendo && dd.descuentoNuevo) nuevo = dd.descuentoNuevo;
+    }
+    var antes = state.bandaDesc ? state.bandaDesc.percent : 0;
+    state.bandaDesc = nuevo ? { code: '', name: nuevo.nombre, percent: Number(nuevo.percent) || 0 } : null;
+    var am = $('club-amigo-msg');
+    if (am) { var tx = dd && $('club-amigo').value.trim() ? (dd.amigoValido ? '✓ ¡Código válido! Tu primer pedido tiene ' + (dd.descuentoNuevo ? dd.descuentoNuevo.percent : 15) + '% off.' : 'Ese código no existe o no aplica. Igual tenés tu bienvenida.') : ''; am.hidden = !tx; am.textContent = tx; }
+    if ((state.bandaDesc ? state.bandaDesc.percent : 0) !== antes) setTimeout(renderCart, 0);
     var ph = $('phone').value.replace(/\D/g, '');
     var valido = ph.length >= 8 && ph.length <= 13;
     var show = valido && !esSocio();
@@ -1843,7 +1905,7 @@ body{
     var lista = regalosPendientes();
     Object.keys(banda.picks).forEach(function (t) { if (lista.indexOf(t) === -1) delete banda.picks[t]; });
     box.hidden = !lista.length;
-    var sinElegir = lista.filter(function (t) { return !(t in banda.picks); });
+    var sinElegir = lista.filter(function (t) { return !(t in banda.picks) || /\+ dip$/i.test(banda.picks[t] || ''); });
     if (banda.frenado && sinElegir.length) box.appendChild(h('p', { class: 'bp-alerta', role: 'alert', text: '🎁 Papina te tiene algo: elegilo o tocá “Esta vez paso”.' }));
     lista.forEach(function (t) {
       var ben = banda.data.beneficios[t];
@@ -1852,10 +1914,15 @@ body{
         h('p', { class: 'bp-t', text: EMOJI_REGALO[t] + ' ' + ben.texto }),
         h('p', { class: 'bp-s', text: 'Elegí el tuyo:' }),
         h('div', { class: 'bp-opts', role: 'group', 'aria-label': 'Elegí tu regalo' }, ben.opciones.map(function (o) {
-          return h('button', { type: 'button', class: 'bp-opt', 'data-regalo': t, 'data-op': o.n, 'aria-pressed': pick === o.n ? 'true' : 'false', disabled: o.sinStock }, [
+          var on = pick === o.n || (pick && /\+ dip$/i.test(o.n) && pick.indexOf(o.n + ' ') === 0);
+          return h('button', { type: 'button', class: 'bp-opt', 'data-regalo': t, 'data-op': o.n, 'aria-pressed': on ? 'true' : 'false', disabled: o.sinStock }, [
             o.n, o.sinStock ? h('small', { text: 'Sin stock' }) : null
           ]);
         })),
+        (pick && /\+ dip/i.test(pick)) ? h('div', { class: 'bp-dips' }, [h('p', { class: 'bp-s', text: '¿Qué dip querés?' }), h('div', { class: 'bp-opts' }, DIPS_REGALO.map(function (dn) {
+          var base = pick.replace(/(\+ dip).*$/i, '$1');
+          return h('button', { type: 'button', class: 'bp-opt', 'data-regalo': t, 'data-op': base + ' ' + dn, 'aria-pressed': pick === base + ' ' + dn ? 'true' : 'false', text: dn });
+        }))]) : null,
         h('button', { type: 'button', class: 'bp-pass', 'data-regalo': t, 'data-op': '', 'aria-pressed': pick === '' ? 'true' : 'false', text: 'Esta vez paso (te lo guardo para la próxima)' })
       ]));
     });
@@ -1951,7 +2018,9 @@ body{
         nombre: ctx.name || loadCliente().name || '', resultado: datos.resultado, gusto: datos.gusto || '',
         problemas: datos.problemas || [], comentario: datos.comentario || '', productos: nombres
       };
+      var pg = progreso(box, 'Enviando tu respuesta…', 3500);
       enviarEncuesta(cuerpo, 0)
+        .then(function () { pg.ok('¡Enviada!'); return new Promise(function (ok) { setTimeout(ok, 550); }); })
         .then(function () {
           // Se marca como respondida (y si se abrió sin código, la última pendiente), así no vuelve a aparecer
           if (ctx.code && encBuscar(ctx.code)) encMarcar(ctx.code, 'respondida');
@@ -1959,6 +2028,7 @@ body{
           alTerminar();
         })
         .catch(function () {
+          pg.cancelar();
           var err = box.querySelector('.err') || box.appendChild(h('p', { class: 'err' }));
           err.textContent = 'No pudimos mandarla. Probá de nuevo en un ratito.';
           if (btn) { btn.disabled = false; btn.textContent = btn.getAttribute('data-t'); }
@@ -2166,6 +2236,7 @@ body{
     if (freq) card.appendChild(h('p', { class: 'bc-freq', text: '¡Te vimos volver! Ya sos de los frecuentes de Papina.' }));
     var prog = progresoSellos(p, tomo);
     if (prog) card.appendChild(prog);
+    if (p && p.codigoAmigos) card.appendChild(h('p', { class: 'bc-freq', text: '🤝 Tu código para amigos: ' + p.codigoAmigos + ' · Con él tienen 15% off y vos ganás premio.' }));
     card.hidden = false;
   }
 
@@ -2178,12 +2249,12 @@ body{
       return a.length > 1 ? 'Elegís entre ' + listaO(a) + '.' : (a.length ? 'Te toca: ' + a[0] + '.' : '');
     };
     var li = function (emoji, titulo, resto) { return h('li', null, [h('i', { text: emoji }), h('span', null, [h('b', { text: titulo }), ' ' + resto])]); };
-    if (b.bienvenida) out.push(li('🎁', 'De bienvenida:', 'un regalo en tu primer pedido como parte de la banda. ' + ops(b.bienvenida)));
+    if (b.bienvenida) out.push(li('🎁', 'De bienvenida:', (b.bienvenida.percent || 10) + '% off en tu primer pedido como parte de la banda.'));
     if (b.cumple) {
-      var dias = Number(d.diasCumple) || 0;
-      out.push(li('🎂', 'En tu cumple', (dias > 0 ? '(o hasta ' + dias + ' días antes o después)' : '(el mismo día)') + ', Papina te invita. ' + ops(b.cumple)));
+      out.push(li('🎂', 'En el mes de tu cumple,', 'Papin te regala un combo (siendo de la banda hace 30 días y con 2 pedidos antes). ' + ops(b.cumple)));
     }
-    if (b.sellos && d.cada) out.push(li('🏅', d.cada === 1 ? 'En cada pedido,' : 'Cada ' + d.cada + ' pedidos,', 'tus pedidos tienen premio. ' + ops(b.sellos)));
+    if (b.sellos && d.cada) out.push(li('🏅', 'Cada ' + d.cada + ' pedidos', 'con hamburguesa (uno por día), tenés premio. ' + ops(b.sellos)));
+    if (b.amigo) out.push(li('🤝', 'Traé a un amigo:', 'con tu código él tiene 15% off en su primer pedido, y vos ganás premio. ' + ops(b.amigo)));
     return out;
   }
 
@@ -2558,6 +2629,7 @@ body{
       var etaEl = $('rc-eta');
       etaEl.hidden = !(st === 'wait' && w.eta);
       if (st === 'wait' && w.eta) { var de = new Date(w.eta); etaEl.innerHTML = '⏱ Listo aprox. a las <b>' + ('0' + de.getHours()).slice(-2) + ':' + ('0' + de.getMinutes()).slice(-2) + '</b>'; }
+      estadosReales(w);
       var grp = $('rc-group');
       grp.hidden = !many;
       if (many) grp.textContent = '🔗 Van juntos: retirás los ' + w.count + ' pedidos con el mismo código.';
@@ -2651,7 +2723,7 @@ body{
     var n = state.lines.length, nom = nomCaja();
     return '<div class="caja' + (chica ? ' chica' : '') + '"><div class="cuerpo-c"></div><div class="tapa"></div><img class="sello" src="' + SELLO + '" alt="">' +
       '<div class="nom' + (nom ? '' : ' vacio') + '">' + (nom ? esc(nom) + '<span class="cor">♥</span>' : 'acá va tu nombre') + '</div>' +
-      '<span class="cuenta">' + (n === 1 ? '1 cosa adentro' : n + ' cosas adentro') + '</span></div>';
+      (n ? '<span class="cuenta">' + (n === 1 ? '1 cosa adentro' : n + ' cosas adentro') + '</span>' : '') + '</div>';
   }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function pintarCajas(animar) {
@@ -2710,6 +2782,10 @@ body{
   function pagarPaso() {
     if (cerradoAhora()) { pintarHorario(); return; }
     pay();
+    if (state.paying) {
+      var pg = progreso($('co-pie'), 'Procesando tu pedido…', 5000);
+      var iv = setInterval(function () { if (!state.paying) { clearInterval(iv); if (!$('receipt').hidden) pg.ok('¡Listo!'); else pg.cancelar(); } }, 200);
+    }
     setTimeout(function () {
       if (!$('err-name').hidden || !$('err-phone').hidden || banda.frenado) { var keep = banda.frenado; irPaso(2); if (keep) $('banda-pick').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     }, 60);
@@ -2725,7 +2801,7 @@ body{
     $('mini-n').textContent = n;
     $('bar-pay').textContent = 'VER TU CAJA';
     $('bar-pay').setAttribute('aria-disabled', n ? 'false' : 'true');
-    $('nudge-say').hidden = n !== 1;
+    pintarSugerencia();
     var lado = $('lado');
     lado.innerHTML = cajaHTML(false) + (n ? '<ul>' + state.lines.map(function (l) { return '<li><span>' + esc(ALL[l.key].name) + '</span><b>' + money(price(l.key)) + '</b></li>'; }).join('') +
       '</ul><div class="tt"><span>Total</span><span>' + money(pr.pay) + '</span></div><button class="pay-btn" type="button" id="lado-b">IR A PAGAR</button>'
@@ -2737,7 +2813,7 @@ body{
       pintarCajas(false);
     }
   }
-  function bump() { var m = $('mini'); m.classList.remove('bump'); void m.offsetWidth; m.classList.add('bump'); }
+  function bump() { var m = $('mini'); m.classList.remove('bump'); void m.offsetWidth; m.classList.add('bump'); var c = document.querySelector('#lado .caja'); if (c) { c.classList.remove('abre'); void c.offsetWidth; c.classList.add('abre'); } }
   function volar(key, fin) {
     var dest = innerWidth >= 1024 ? $('lado') : $('mini'), img = document.querySelector('.card[data-key="' + key + '"] img');
     if (!img || !dest || matchMedia('(prefers-reduced-motion: reduce)').matches) { bump(); fin(); return; }
@@ -2793,7 +2869,8 @@ body{
     decir('¿En qué te doy una mano?', null, '<div class="opc">' +
       '<button type="button" data-p="elegir" class="r">Ayudame a elegir</button><button type="button" data-p="envios">¿Hacen envíos?</button><button type="button" data-p="donde">¿Dónde están?</button>' +
       '<button type="button" data-p="horario">¿Qué horario tienen?</button><button type="button" data-p="smash">¿Qué es smash?</button><button type="button" data-p="banda">¿Qué es La Banda?</button>' +
-      '<button type="button" data-p="callate">Callate un ratito 🤐</button></div>', true);
+      '<button type="button" data-p="callate">Callate un ratito 🤐</button><button type="button" data-p="sonido">' + (mudo ? 'Con sonido 🔊' : 'Silencio 🔇') + '</button></div>' +
+      '<div class="preg"><input id="papin-q" type="text" maxlength="120" placeholder="O escribime tu pregunta…" autocomplete="off"><button type="button" class="r" data-p="preguntar">Preguntar</button></div>', true);
   }
   function llevarA(key) {
     switchTab(key.indexOf('s_') === 0 ? 'solas' : 'combos');
@@ -2805,10 +2882,13 @@ body{
   function initPapina() {
     var E = estadoLocal(); $('estado-t').textContent = E.t; $('estado').classList.toggle('abierto', E.abierto);
     $('g-x').onclick = cerrarGlobo;
+    $('globo').addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.id === 'papin-q') { e.preventDefault(); var b = $('globo').querySelector('[data-p="preguntar"]'); if (b) b.click(); } });
     $('globo').addEventListener('click', function (e) {
       var b = e.target.closest('[data-p],[data-ir]'); if (!b) return;
       var p = b.getAttribute('data-p'), ir = b.getAttribute('data-ir');
       if (p === 'mas') return menuPapina();
+      if (p === 'sonido') { mudo = !mudo; try { localStorage.setItem('dp-mute', mudo ? '1' : '0'); } catch (e) {} if (!mudo) sonido('pop'); return menuPapina(); }
+      if (p === 'preguntar') { var qi = $('papin-q'), qv = qi ? qi.value.trim() : ''; if (!qv) { if (qi) qi.focus(); return; } var rr = responderTexto(qv); return decir(rr[0], rr[1], (rr[2] || '') + '<div class="opc"><button type="button" data-p="mas">Otra pregunta</button></div>', true); }
       if (p === 'elegir') return decir('Decime qué tenés ganas y te llevo:', null, '<div class="opc"><button type="button" data-ir="lt">Algo bien cargado</button><button type="button" data-ir="ldv">Doble sí o sí</button><button type="button" data-ir="lfs">Algo más liviano</button><button type="button" data-ir="lpp">Para los chicos</button></div>', true);
       if (p === 'callate') { decir('Listo, me quedo calladito. Si me necesitás, tocame 🤐'); callado = true; return; }
       if (p) { var r = respuestas()[p]; decir(r[0], r[1], (r[2] || '') + '<div class="opc"><button type="button" data-p="mas">Otra pregunta</button></div>', true); return; }
@@ -2816,7 +2896,7 @@ body{
     });
     $('chef').onclick = function () { if (!$('globo').hidden && $('g-extra').querySelector('[data-p="callate"]')) { cerrarGlobo(); return; } menuPapina(); };
     var visto = false; try { visto = sessionStorage.getItem('dp-hola') === '1'; sessionStorage.setItem('dp-hola', '1'); } catch (e) {}
-    if (!visto) setTimeout(function () { if (hayVentana() || callado) return; $('chef').classList.add('saluda'); decir('¡Bienvenido a casa!', 'Tocame si necesitás una mano.'); }, 1200);
+    if (!visto) setTimeout(function () { if (hayVentana() || callado || !$('globo').hidden) return; $('chef').classList.add('saluda'); decir('¡Bienvenido a casa!', 'Tocame si necesitás una mano.'); }, 1200);
   }
   // ── Nombre para cada producto (cuando hay 2 o más): sale en la comanda como "PARA: JUAN"
   function paraDe(l) {
@@ -2922,6 +3002,154 @@ body{
       .catch(function () { pintarPagoCard(p, 'error'); });
   }
 
+  // ═════════ EXPERIENCIA "WOW": sonidos, papel picado, estados reales, reloj, sellos, progreso, sugerencias ═════════
+  // ── Sonidos sintetizados (sin archivos: no pesan nada). Botón de silencio en el menú de Papin.
+  var mudo = false; try { mudo = localStorage.getItem('dp-mute') === '1'; } catch (e) {}
+  var actx = null;
+  function sonido(tipo) {
+    if (mudo) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+      var t0 = actx.currentTime;
+      var nota = function (f, ini, dur, tipoOnda, vol, fFin) {
+        var o = actx.createOscillator(), g = actx.createGain();
+        o.type = tipoOnda || 'sine'; o.frequency.setValueAtTime(f, t0 + ini);
+        if (fFin) o.frequency.exponentialRampToValueAtTime(fFin, t0 + ini + dur);
+        g.gain.setValueAtTime(0.0001, t0 + ini); g.gain.exponentialRampToValueAtTime(vol || 0.18, t0 + ini + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + ini + dur);
+        o.connect(g); g.connect(actx.destination); o.start(t0 + ini); o.stop(t0 + ini + dur + 0.02);
+      };
+      if (tipo === 'pop') nota(520, 0, 0.12, 'sine', 0.2, 900);
+      else if (tipo === 'pum') { nota(130, 0, 0.22, 'triangle', 0.35, 55); nota(90, 0.01, 0.18, 'sine', 0.25, 50); }
+      else if (tipo === 'tilin') { nota(1046, 0, 0.35, 'sine', 0.16); nota(1318, 0.12, 0.45, 'sine', 0.14); }
+      else if (tipo === 'fiesta') { [523, 659, 784, 1046].forEach(function (f, i) { nota(f, i * 0.09, 0.28, 'triangle', 0.14); }); }
+    } catch (e) {}
+  }
+  function vibrar(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+  // ── Papel picado (2 segundos, liviano)
+  function papelPicado() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var c = document.createElement('canvas'); c.className = 'picado'; document.body.appendChild(c);
+    var W = c.width = innerWidth, H = c.height = innerHeight, ctx = c.getContext('2d');
+    var cols = ['#B3402A', '#F3D08A', '#4A5A34', '#96603A', '#FFF8E7'], P = [];
+    for (var i = 0; i < 90; i++) P.push({ x: W / 2 + (Math.random() - 0.5) * 80, y: H * 0.35, vx: (Math.random() - 0.5) * 9, vy: -Math.random() * 11 - 4, r: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.3, s: 5 + Math.random() * 6, c: cols[i % cols.length] });
+    var t = 0;
+    (function cuadro() {
+      ctx.clearRect(0, 0, W, H); t++;
+      P.forEach(function (p) { p.vy += 0.32; p.x += p.vx; p.y += p.vy; p.r += p.vr; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore(); });
+      if (t < 110) requestAnimationFrame(cuadro); else c.remove();
+    })();
+  }
+  // ── El total "cuenta" hasta el número nuevo
+  var totalAnt = 0, totalAnim = null;
+  function contarTotal(nuevo) {
+    var el = $('bar-total'); if (!el) return;
+    cancelAnimationFrame(totalAnim);
+    var desde = totalAnt, ini = performance.now(); totalAnt = nuevo;
+    if (desde === nuevo || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = money(nuevo); return; }
+    (function paso(t) { var k = Math.min(1, (t - ini) / 450), v = Math.round(desde + (nuevo - desde) * (1 - Math.pow(1 - k, 3))); el.textContent = money(v); if (k < 1) totalAnim = requestAnimationFrame(paso); })(ini);
+  }
+  // ── Barra de progreso para lo que tarda (el % es estimado: avanza y se completa cuando responde)
+  function progreso(dentro, texto, msEstimado) {
+    var box = h('div', { class: 'prog', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100' }, [h('div', { class: 'prog-b' }, [h('i')]), h('span', { class: 'prog-t' })]);
+    dentro.appendChild(box);
+    var pct = 0, ini = Date.now(), fin = false;
+    var pintar = function () { box.querySelector('i').style.width = pct + '%'; box.querySelector('.prog-t').textContent = texto + ' ' + Math.round(pct) + '%'; box.setAttribute('aria-valuenow', String(Math.round(pct))); };
+    var tm = setInterval(function () { if (fin) return; var x = (Date.now() - ini) / (msEstimado || 4000); pct = Math.min(94, 100 * (1 - Math.exp(-2.2 * x))); pintar(); }, 120);
+    pintar();
+    return {
+      ok: function (txtOk) { fin = true; clearInterval(tm); pct = 100; pintar(); box.querySelector('.prog-t').textContent = (txtOk || '¡Listo!') + ' ✓'; box.classList.add('ok'); setTimeout(function () { box.remove(); }, 900); },
+      cancelar: function () { fin = true; clearInterval(tm); box.remove(); }
+    };
+  }
+  // ── Dips sueltos (pestaña Papas) y su dibujito
+  IMG.dip = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 252"><rect width="340" height="252" fill="#F3D08A"/><ellipse cx="170" cy="186" rx="96" ry="22" fill="#00000022"/><path d="M84 112h172l-18 72c-3 12-14 20-26 20H128c-12 0-23-8-26-20z" fill="#FFF8E7" stroke="#33200F" stroke-width="6"/><ellipse cx="170" cy="112" rx="86" ry="20" fill="#B3402A" stroke="#33200F" stroke-width="6"/><path d="M120 108c20-10 40 8 60-2s34 6 46 2" fill="none" stroke="#e4775c" stroke-width="6" stroke-linecap="round"/><path d="M250 60l-40 46" stroke="#E6B347" stroke-width="14" stroke-linecap="round"/><path d="M250 60l-40 46" stroke="#33200F" stroke-width="3" stroke-linecap="round" opacity=".5"/></svg>');
+  var DIPS = [['d_tasty', 'Dip salsa Tasty', '“La de la casa, en versión para mojar.”'], ['d_honey', 'Dip salsa Honey', '“Dulce, pero con carácter.”'], ['d_mayo', 'Dip mayonesa', '“La clásica nunca falla.”'], ['d_ketchup', 'Dip ketchup', '“Infaltable con unas papas.”'], ['d_mostaza', 'Dip mostaza', '“Para los que se animan.”'], ['d_bbq', 'Dip BBQ', '“Ahumada y pícara.”'], ['d_alioli', 'Dip alioli', '“Con ajo, sin miedo.”']]
+    .map(function (d) { return { key: d[0], code: 'DIP', name: d[1], badge: 'DIP', img: 'dip', desc: 'Pote de salsa para mojar las papas.', quote: d[2] }; });
+  DIPS.forEach(function (p) { ALL[p.key] = p; });
+  // ── Sugerencias para acompañar (una por pedido; "No, gracias" la esconde)
+  function tipoLinea(k) { return /^s_/.test(k) ? 'sola' : (/^p_/.test(k) ? 'papas' : (/^d_/.test(k) ? 'dip' : (k === 'prueba' ? 'prueba' : 'combo'))); }
+  function sugerencia() {
+    var n = state.lines.length; if (!n) return null;
+    var t = {}; state.lines.forEach(function (l) { t[tipoLinea(l.key)] = 1; });
+    var no = function (id) { try { return sessionStorage.getItem('dp-sug-' + id) === '1'; } catch (e) { return false; } };
+    if (t.sola && !t.papas && !no('papas')) return { id: 'papas', txt: '¿Va sin papas? Sumale unas 100% naturales 🍟', btn: 'Ver papas', ir: 'grid-papas' };
+    if (t.papas && !t.dip && !no('dip')) return { id: 'dip', txt: '¿Le sumás un dip para mojar? 😏', btn: 'Ver dips', ir: 'grid-dips' };
+    if (!t.combo && !t.sola && (t.papas || t.dip) && !no('burger')) return { id: 'burger', txt: '¿Y si las acompañás con una hamburguesa?', btn: 'Ver hamburguesas', ir: 'combos' };
+    if (n === 1 && !no('mas')) return { id: 'mas', txt: '¿Seguro que con esto alcanza? 👀', btn: 'Sumar algo más', ir: '' };
+    return null;
+  }
+  function pintarSugerencia() {
+    var box = $('nudge-say'); if (!box) return;
+    var s = sugerencia(); box.hidden = !s; if (!s) return;
+    var glo = box.querySelector('.glo'); glo.textContent = '';
+    glo.appendChild(document.createTextNode(s.txt)); glo.appendChild(h('br'));
+    var si = h('button', { type: 'button', text: s.btn }), no = h('button', { type: 'button', class: 'sug-no', text: 'No, gracias' });
+    si.onclick = function () {
+      cerrarCo();
+      if (s.ir === 'combos') switchTab('combos'); else if (s.ir) switchTab('papas');
+      var el = s.ir && s.ir !== 'combos' ? $(s.ir) : null;
+      setTimeout(function () { if (el) window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - 120, behavior: 'smooth' }); }, 80);
+    };
+    no.onclick = function () { try { sessionStorage.setItem('dp-sug-' + s.id, '1'); } catch (e) {} pintarSugerencia(); };
+    glo.appendChild(si); glo.appendChild(no);
+  }
+  // ── Papin entiende preguntas escritas (palabras clave, gratis y sin inventar)
+  function sinAc(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function responderTexto(q) {
+    var t = sinAc(q), R = respuestas();
+    var tiene = function (l) { return l.some(function (w) { return t.indexOf(w) >= 0; }); };
+    if (tiene(['envio', 'delivery', 'domicilio', 'pedidosya', 'pedidos ya', 'mandan', 'llevan', 'traen'])) return R.envios;
+    if (tiene(['horario', 'abren', 'cierran', 'abierto', 'hora', 'que dia', 'dias'])) return R.horario;
+    if (tiene(['donde', 'direccion', 'ubicacion', 'llegar', 'local', 'retiro', 'retirar'])) return R.donde;
+    if (tiene(['smash'])) return R.smash;
+    if (tiene(['banda', 'premio', 'sello', 'puntos', 'club', 'beneficio', 'cumple', 'regalo'])) return R.banda;
+    if (tiene(['pago', 'pagar', 'tarjeta', 'mercado pago', 'transferencia', 'debito', 'credito', 'efectivo'])) return ['Desde la carta pagás con Mercado Pago: tarjeta de crédito, débito o dinero en cuenta. Es seguro y rapidito.'];
+    if (tiene(['tarda', 'demora', 'cuanto tiempo', 'minutos', 'rapido'])) return ['Una hamburguesa sale en unos 10 a 15 minutos. Si hay muchos pedidos puede tardar un poco más: cuando pagás te mostramos la hora estimada y te avisamos cuando está lista.'];
+    if (tiene(['papa', 'papas', 'frita'])) return ['Nuestras papas son 100% naturales, cortadas a mano, todos los días. Nada de bolsa 🍟'];
+    if (tiene(['carne', 'blend', 'medallon', 'gramos'])) return ['Cortes enteros que picamos acá todos los días, con dos blends propios. Cada medallón pesa 100 g.'];
+    if (tiene(['cupon', 'codigo', 'descuento', 'promo'])) return ['Si tenés un código, lo ponés en el último paso del pedido, en "¿Tenés un código de descuento?" 😉'];
+    if (tiene(['vegano', 'vegetariano', 'celiaco', 'tacc', 'gluten', 'alergia'])) return ['Por ahora no tenemos opciones especiales para eso. Escribinos por WhatsApp y te contamos qué podemos hacer.', null, '<div class="opc"><a class="lleg" href="https://wa.me/' + WHATSAPP + '" target="_blank" rel="noopener">💬 WhatsApp</a></div>'];
+    if (tiene(['hola', 'buenas', 'gracias', 'genio', 'capo'])) return ['¡De nada, para eso estoy! ¿Te ayudo a elegir algo rico? 😏'];
+    return ['Esa no me la sé 🙈 Escribinos por WhatsApp y te respondemos al toque.', null, '<div class="opc"><a class="lleg" href="https://wa.me/' + WHATSAPP + '" target="_blank" rel="noopener">💬 Escribir por WhatsApp</a></div>'];
+  }
+  // ── Comprobante: estados reales (recibido → en la cocina → listo), reloj y sello "YA ES TUYO"
+  var visto = {};
+  function selloListo(animar) {
+    var cj = document.querySelector('#rc-caja .caja'); if (!cj || cj.querySelector('.sello-listo')) return;
+    cj.classList.add('humea');
+    cj.appendChild(h('div', { class: 'sello-listo' + (animar ? ' golpe' : '') }, [h('b', { text: 'YA ES TUYO' }), h('span', { text: 'Vení por tu pecado 😏' })]));
+    ['h1', 'h2', 'h3'].forEach(function (c) { cj.appendChild(h('i', { class: 'humo ' + c })); });
+  }
+  function relojEta(w) {
+    var el = $('rc-eta'); if (!el || !w) return;
+    var now = Date.now();
+    if (!w.eta) { el.hidden = false; el.innerHTML = '<span class="esperando">Esperando que la cocina lo confirme<i>.</i><i>.</i><i>.</i></span>'; return; }
+    var total = Math.max(60000, w.eta - (w.since || now)), falta = w.eta - now, pct = Math.max(4, Math.min(100, 100 * (1 - falta / total)));
+    var de = new Date(w.eta), hh = ('0' + de.getHours()).slice(-2) + ':' + ('0' + de.getMinutes()).slice(-2);
+    var txt = falta > 60000 ? 'Faltan ~<b>' + Math.ceil(falta / 60000) + ' min</b> · listo aprox. a las ' + hh : 'Ya casi, lo estamos terminando 🔥';
+    el.hidden = false;
+    el.innerHTML = '<span>' + txt + '</span><span class="reloj-b"><i style="width:' + pct.toFixed(1) + '%"></i></span>';
+  }
+  function estadosReales(w) {
+    if (!w) return;
+    var st = w.state, fase = st === 'ready' ? 'listo' : (st === 'wait' ? (w.eta ? 'cocina' : 'recibido') : st);
+    var prev = visto[w.code];
+    if (st === 'wait') {
+      var many = (w.count || 1) > 1;
+      $('rc-hero-t').textContent = fase === 'cocina' ? (many ? '🔥 ¡Ya están en la cocina!' : '🔥 ¡Ya está en la cocina!') : '🧾 Recibimos tu pedido';
+      relojEta(w);
+    }
+    if (fase === 'listo') selloListo(prev && prev !== 'listo');
+    if (prev && prev !== fase) {
+      if (fase === 'cocina') { sonido('tilin'); vibrar(80); }
+      if (fase === 'listo') { sonido('pum'); setTimeout(function () { sonido('tilin'); }, 260); vibrar([120, 60, 120]); }
+    }
+    visto[w.code] = fase;
+  }
+  setInterval(function () { if (!$('receipt').hidden) { var w = findWatch(current); if (w && w.state === 'wait') relojEta(w); } }, 15000);
+
   // ───── arranque ─────
   function init() {
     COMBOS.forEach(function (p) { $('grid-combos').appendChild(buildCard(p)); });
@@ -2929,6 +3157,7 @@ body{
     SOLAS.forEach(function (p) { $('grid-solas').appendChild(buildCard(p)); });
     SOLAS_KIDS.forEach(function (p) { $('grid-solas-kids').appendChild(buildCard(p)); });
     PAPAS.forEach(function (p) { $('grid-papas').appendChild(buildCard(p)); });
+    DIPS.forEach(function (p) { $('grid-dips').appendChild(buildCard(p)); });
     if (modoPrueba) PRUEBA.forEach(function (p) { var g = $('grid-combos'); g.insertBefore(buildCard(p), g.firstChild); });
     initPapina(); initPasos();
     setInterval(function () { renderCart(); }, 60000);

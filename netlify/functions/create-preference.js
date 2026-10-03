@@ -21,7 +21,9 @@ const {
   cleanText,
   normalizeLines,
   compactCart,
-  resolveCoupon,
+  resolverCodigo,
+  usarCodigo,
+  descuentoBanda,
   applyDiscount,
   buildThinkionOrder,
   sendToThinkion,
@@ -100,8 +102,15 @@ exports.handler = async (event) => {
     // Código de descuento (opcional)
     let coupon = null;
     if (body.coupon) {
-      coupon = resolveCoupon(body.coupon);
-      if (!coupon.ok) return json(400, { error: coupon.error, coupon_invalid: true });
+      coupon = await resolverCodigo(body.coupon);
+      if (!coupon.ok) return json(coupon.retry ? 503 : 400, { error: coupon.error, coupon_invalid: !coupon.retry });
+    }
+    // Sin código: ¿le toca el descuento de La Banda? (bienvenida 10% o recomendado 15%, lo decide la planilla)
+    const phoneBanda = cleanPhone((body.customer || {}).phone);
+    const amigo = String(body.amigo || "").toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 20);
+    if (!coupon && phoneBanda) {
+      const bd = await descuentoBanda(phoneBanda, !!body.club, amigo);
+      if (bd) coupon = bd;
     }
     // Fuera de horario no se toman pedidos (los códigos de la casa pasan igual, para probar)
     const codigoDeLaCasa = !!(coupon && Number(coupon.percent) >= 99);
@@ -123,7 +132,7 @@ exports.handler = async (event) => {
       const orderId = freeOrderId();
       const code = groupWith || pickupCodeFor(orderId);
       // Ficha del cliente: frecuente / cortesía (si tarda o falla, el pedido sigue igual)
-      const cliente = phone ? await clienteDelPedido({ phone, name, club, promos, cumple, elegidos, code, orderId, total: pricing.pay, lines: norm.lines }, 6000) : null;
+      const cliente = phone ? await clienteDelPedido({ phone, name, club, promos, cumple, elegidos, code, orderId, total: pricing.pay, lines: norm.lines, bandaDesc: coupon && coupon.motivo, amigo }, 6000) : null;
       const order = buildThinkionOrder({
         phone,
         cliente,
@@ -151,6 +160,7 @@ exports.handler = async (event) => {
         return json(502, { error: "No pudimos registrar tu pedido. Probá de nuevo en unos segundos." });
       }
       console.log(`Pedido sin costo ${orderId} cargado y confirmado en Thinkion (código ${coupon.code})`);
+      await usarCodigo(coupon.code, orderId);
       return json(200, {
         free: true,
         order_id: orderId,
@@ -227,12 +237,15 @@ exports.handler = async (event) => {
     if (coupon) {
       metadata.coupon = coupon.code;
       metadata.discount_key = coupon.key;
+      if (coupon.motivo) metadata.banda_desc = coupon.motivo;
       metadata.expected_pay = pricing.pay;
     }
 
     // Marca única de este pago: la carta la usa para preguntar si se pagó
     // (cuando el cliente paga desde la app de Mercado Pago y no vuelve solo a la página)
     const externalRef = "dp_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+
+    if (amigo) metadata.amigo = amigo;
 
     const preference = {
       items: mpItems,
